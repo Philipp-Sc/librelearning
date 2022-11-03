@@ -9,6 +9,9 @@ use js_sys::Date;
 use super::spaced_repetition::*;
 use std::collections::HashMap;
 
+use super::windows::settings::*;
+use super::windows::Window;
+
 // TODO: show error, if incorrect review.
 // TODO: option forgiving label == input evaluation.
 
@@ -86,42 +89,33 @@ struct Card {
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct LibreLearningApp {
+    settings: SettingsWindow,
+
     #[serde(skip)]
     static_audio: StaticAudio,
 
     show_settings: bool,
-    auto_play_audio: bool,
-    enable_sounds: bool,
-
-    add_new_card_threshold: f32,
 
     progress: f32,
     user_text_input: String,
     text_input_has_focus: bool,
-    strict_input_comparison: bool,
 
     is_next: bool,
     card_list: Vec<Card>,
 
     #[serde(skip)]
     space_repetition_model: SpacedRepetition, // not saved, it will be restored from the card_list.
-
-    #[serde(skip)]
-    reset_app: bool,
 }
 
 impl Default for LibreLearningApp {
     fn default() -> Self {
         Self {
+            settings: SettingsWindow::default(),
             static_audio: StaticAudio::new(),
             show_settings: false,
-            auto_play_audio: false,
-            enable_sounds: true,
-            add_new_card_threshold: 66.6,
             progress: 0.0,
             user_text_input: "".to_owned(), 
             text_input_has_focus: false,
-            strict_input_comparison: false,
             is_next: false,
             card_list: vec![Card {
                                 display_data: CardDisplay {
@@ -170,7 +164,6 @@ impl Default for LibreLearningApp {
                             }
                             ],
             space_repetition_model: SpacedRepetition::default(),
-            reset_app: false,
         }
     }
 }
@@ -238,6 +231,7 @@ impl LibreLearningApp {
                     &mut self.card_list[i].meta_data,
                 );
                 let date = Date::new(&wasm_bindgen::JsValue::from_f64(time));
+                /*
                 super::log(&format!(
                     "Card_ID: {}\nCard_Question: {}\n{:?}\n{:?}",
                     self.card_list[i].meta_data.id,
@@ -245,6 +239,7 @@ impl LibreLearningApp {
                     time,
                     date.to_iso_string()
                 ));
+                */
                 list.insert(self.card_list[i].meta_data.id, time.trunc() as u64);
             }
             {
@@ -294,61 +289,15 @@ impl eframe::App for LibreLearningApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.reset_app {
+        if self.settings.reset_app {
             *self = Default::default();
         }
         assert!(self.card_list.len() > 0);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                if self.show_settings {
-                    egui::Window::new("App Settings")
-                        .fixed_rect(egui::Rect::from_min_size(
-                            [6.0, 40.0].into(),
-                            [ui.available_width() - 10.0, ui.available_height() - 50.0].into(),
-                        ))
-                        .title_bar(false)
-                        .open(&mut self.show_settings)
-                        .collapsible(false)
-                        .show(ctx, |ui| {
-                            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                                ui.vertical_centered_justified(|ui| {
-                                    if ui
-                                        .add(egui::Button::new(
-                                            egui::RichText::new("Connect/Edit Datasource")
-                                                .size(18.0)
-                                                .color(egui::Color32::WHITE),
-                                        ))
-                                        .clicked()
-                                    {}
-                                    ui.separator();
+                self.settings.show(ctx, &mut self.show_settings);
 
-                                    ui.add(
-                                        egui::Slider::new(
-                                            &mut self.add_new_card_threshold,
-                                            0.0..=100.0,
-                                        )
-                                        .text("Add New Card Threshold"),
-                                    );
-
-                                    ui.checkbox(&mut self.strict_input_comparison, "Strict Review");
-                                    ui.checkbox(&mut self.auto_play_audio, "Auto Play Audio");
-                                    ui.checkbox(&mut self.enable_sounds, "Enable Sounds");
-
-                                    if ui
-                                        .add(egui::Button::new(
-                                            egui::RichText::new("Reset App")
-                                                .size(18.0)
-                                                .color(egui::Color32::BLACK),
-                                        ))
-                                        .clicked()
-                                    {
-                                        self.reset_app = true;
-                                    }
-                                });
-                            });
-                        });
-                }
                 ui.add(
                     egui::widgets::ProgressBar::new(self.progress)
                         .desired_width(ui.available_width() - 36.0)
@@ -400,10 +349,9 @@ impl eframe::App for LibreLearningApp {
 
             ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
             ui.vertical_centered_justified(|ui| {
-                self.card_list[0]
-                    .display_data
-                    .get_image()
-                    .map(|img| img.show_size(ui, egui::Vec2 { x: 200.0, y: 200.0 }));
+                self.card_list[0].display_data.get_image().map(
+                    |img| img.show(ui), /*_size(ui, egui::Vec2 { x: 200.0, y: 200.0 }))*/
+                );
                 // note this is not efficient
             });
 
@@ -426,7 +374,7 @@ impl eframe::App for LibreLearningApp {
             ui.allocate_space(available_space);
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                if self.add_new_card_threshold <= self.progress {
+                if self.settings.add_new_card_threshold <= self.progress {
                     if ui
                         .add(
                             egui::Button::new(
@@ -438,8 +386,10 @@ impl eframe::App for LibreLearningApp {
                         )
                         .clicked()
                     {
-                        self.static_audio
-                            .play_audio(&StaticSounds::MessageNewInstant);
+                        if self.settings.enable_sounds {
+                            self.static_audio
+                                .play_audio(&StaticSounds::MessageNewInstant);
+                        }
                         // TODO trigger new card to load. // and call next so the new card gets scheduled.
                     }
                 }
@@ -449,12 +399,12 @@ impl eframe::App for LibreLearningApp {
                         self.card_list[0].meta_data.timestamps.push(Date::now());
                         if self.user_text_input == self.card_list[0].display_data.get_label() {
                             self.static_audio.play_audio(&StaticSounds::BeginningOfLine); // MessageNewInstant
-                            if self.enable_sounds {
+                            if self.settings.enable_sounds {
                                 self.card_list[0].meta_data.scores.push(true);
                             }
                         } else {
                             // TODO change color for button in red blinking.
-                            if self.enable_sounds {
+                            if self.settings.enable_sounds {
                                 self.static_audio.play_audio(&StaticSounds::ServiceLogout);
                             }
                             self.card_list[0].meta_data.scores.push(false);
@@ -465,7 +415,7 @@ impl eframe::App for LibreLearningApp {
             });
         });
 
-        if self.auto_play_audio && self.is_next {
+        if self.settings.auto_play_audio && self.is_next {
             self.card_list[0].display_data.play_audio_item();
             self.is_next = false;
         }
