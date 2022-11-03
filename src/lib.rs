@@ -1,15 +1,14 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
+mod app;
 mod audio;
-mod static_audio;
 mod image;
 mod spaced_repetition;
-mod app;
+mod static_audio;
 pub use app::LibreLearningApp;
 
-
 use wasm_bindgen::prelude::*;
- 
+
 // First up let's take a look of binding `console.log` manually, without the
 // help of `web_sys`. Here we're writing the `#[wasm_bindgen]` annotations
 // manually ourselves, and the correctness of our program relies on the
@@ -17,7 +16,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(module = "/defined-in-js.js")]
 extern "C" {
-    pub fn is_ready(); 
+    pub fn is_ready();
 }
 
 #[wasm_bindgen]

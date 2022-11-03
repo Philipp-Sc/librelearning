@@ -1,32 +1,27 @@
-
-
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(module = "/defined-in-js.js")]
-extern "C" { 
+extern "C" {
     pub fn play_audio_from_uint8_array(uint8_array: js_sys::Uint8Array);
 }
 
-
 pub enum StaticSounds {
     DialogWarning,
-    BeginningOfLine, 
+    BeginningOfLine,
     Prompt,
     MessageNewInstant,
     ServiceLogout,
-    Start
+    Start,
 }
 
-
 pub struct StaticAudio {
-    dialog_warning: Vec<u8>, 
+    dialog_warning: Vec<u8>,
     beginning_of_line: Vec<u8>,
     prompt: Vec<u8>,
     message_new_instant: Vec<u8>,
     service_logout: Vec<u8>,
     start: Vec<u8>,
 }
-
 
 impl Default for StaticAudio {
     fn default() -> Self {
@@ -35,22 +30,21 @@ impl Default for StaticAudio {
 }
 
 impl StaticAudio {
-
     pub fn new() -> StaticAudio {
         StaticAudio {
-            dialog_warning: include_bytes!("../../assets/dialog-warning.oga").to_vec(), 
-            beginning_of_line: include_bytes!("../../assets/beginning-of-line").to_vec(), 
-            prompt: include_bytes!("../../assets/prompt.wav").to_vec(), 
-            message_new_instant: include_bytes!("../../assets/message-new-instant.oga").to_vec(), 
-            service_logout: include_bytes!("../../assets/service-logout.oga").to_vec(), 
-            start: include_bytes!("../../assets/start").to_vec(), 
+            dialog_warning: include_bytes!("../../assets/dialog-warning.oga").to_vec(),
+            beginning_of_line: include_bytes!("../../assets/beginning-of-line").to_vec(),
+            prompt: include_bytes!("../../assets/prompt.wav").to_vec(),
+            message_new_instant: include_bytes!("../../assets/message-new-instant.oga").to_vec(),
+            service_logout: include_bytes!("../../assets/service-logout.oga").to_vec(),
+            start: include_bytes!("../../assets/start").to_vec(),
         }
     }
 
     pub fn play_audio(&self, static_sound: &StaticSounds) {
         let sound = match static_sound {
             StaticSounds::DialogWarning => &self.dialog_warning,
-            StaticSounds::BeginningOfLine => &self.beginning_of_line, 
+            StaticSounds::BeginningOfLine => &self.beginning_of_line,
             StaticSounds::Prompt => &self.prompt,
             StaticSounds::MessageNewInstant => &self.message_new_instant,
             StaticSounds::ServiceLogout => &self.service_logout,
@@ -62,12 +56,10 @@ impl StaticAudio {
 
         play_audio_from_uint8_array(array);
 
-
         //let mut context = web_sys::AudioContext::new().unwrap();
-        //context.decode_audio_data(&array.buffer()); 
+        //context.decode_audio_data(&array.buffer());
         //let _decodedData = wasm_bindgen_futures::JsFuture::from(promise).await.unwrap();
         //context.create_buffer_source().unwrap().start();
         //super::log(&format!("{:?}",decodedData));
     }
-
 }
