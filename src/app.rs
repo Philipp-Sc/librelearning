@@ -12,6 +12,8 @@ use std::collections::HashMap;
 // TODO: show error, if incorrect review.
 // TODO: option forgiving label == input evaluation.
 
+// TODO: replace test data.
+
 // TODO authentication, only be able to access my own files. (image url/audio url), consider cryptic link or login.
 
 // client makes request, sending all card_ids it has, and requests a new card.
@@ -93,6 +95,7 @@ pub struct LibreLearningApp {
 
     progress: f32,
     user_text_input: String,
+    strict_input_comparison: bool,
 
     is_next: bool,
     card_list: Vec<Card>,
@@ -114,6 +117,7 @@ impl Default for LibreLearningApp {
             add_new_card_threshold: 66.6,
             progress: 0.0,
             user_text_input: "".to_owned(), 
+            strict_input_comparison: false,
             is_next: false,
             card_list: vec![Card {
                                 display_data: CardDisplay {
@@ -122,7 +126,7 @@ impl Default for LibreLearningApp {
                                     label_text: "Thank you, happy eid.".to_owned(),
                                     placeholder_text: "Type the English translation".to_owned(),
                                     audio_item: Some(AudioItem::new("https://dobrian.github.io/cmp/topics/sample-recording-and-playback-with-web-audio-api/freejazz.wav")),
-                                    image_item: Some(ImageItem::new("https://avatars.githubusercontent.com/u/16901158")),
+                                    image_item: Some(ImageItem::new("https://raw.githubusercontent.com/Philipp-Sc/librelearning/main/assets/DALL_E_Terima_kasih__Selamat_idul_fitri.png")),
                                 },
                                 meta_data: CardMeta {
                                     id: 0,
@@ -323,6 +327,10 @@ impl eframe::App for LibreLearningApp {
                                         .text("Add New Card Threshold"),
                                     );
 
+                                    ui.checkbox(
+                                        &mut self.strict_input_comparison,
+                                        "Strict Input Comparison",
+                                    );
                                     ui.checkbox(&mut self.auto_play_audio, "Auto Play Audio");
                                     ui.checkbox(&mut self.enable_sounds, "Enable Sounds");
 

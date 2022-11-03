@@ -6,6 +6,8 @@ use std::io::Cursor;
 use rodio::{source::Source, Decoder, OutputStream};
 */
 
+// TODO: update to fetch raw audio bytes, then play as in static_audio. remove HtmlAudioElement
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 #[derive(derivative::Derivative)]
