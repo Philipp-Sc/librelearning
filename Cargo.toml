@@ -1,7 +1,7 @@
 [package]
-name = "eframe_template"
+name = "libre_learning"
 version = "0.1.0"
-authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
+authors = ["Philipp Schlütermann <philipp.schluetermann@udo.edu>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

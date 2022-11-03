@@ -1,6 +1,6 @@
 {
-  "name": "Libre Learning PWA",
-  "short_name": "libre-learning-pwa",
+  "name": "Libre Learning",
+  "short_name": "Libre Learning",
   "icons": [
     {
       "src": "./android-chrome-192x192.png",
