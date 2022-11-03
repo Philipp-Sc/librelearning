@@ -14,6 +14,8 @@ use std::collections::HashMap;
 
 // TODO: replace test data.
 
+// TODO: make sure audio finishes playing before starting another.
+
 // TODO authentication, only be able to access my own files. (image url/audio url), consider cryptic link or login.
 
 // client makes request, sending all card_ids it has, and requests a new card.
@@ -329,7 +331,7 @@ impl eframe::App for LibreLearningApp {
 
                                     ui.checkbox(
                                         &mut self.strict_input_comparison,
-                                        "Strict Input Comparison",
+                                        "Strict Review",
                                     );
                                     ui.checkbox(&mut self.auto_play_audio, "Auto Play Audio");
                                     ui.checkbox(&mut self.enable_sounds, "Enable Sounds");
@@ -408,13 +410,13 @@ impl eframe::App for LibreLearningApp {
             ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
             ui.add(
                 egui::TextEdit::multiline(&mut self.user_text_input)
-                    .frame(false)
+                    //.frame(false)
                     .hint_text(egui::RichText::new(
                         self.card_list[0].display_data.get_input_field_placeholder(),
                     )) // Type the Indonesian translation // Type what you hear
                     .text_color(egui::Color32::WHITE)
                     .font(egui::FontId::proportional(20.0))
-                    .lock_focus(true)
+                    //.lock_focus(true)
                     .desired_width(f32::INFINITY),
             );
 
