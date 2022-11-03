@@ -5,6 +5,7 @@ mod audio;
 mod image;
 mod spaced_repetition;
 mod static_audio;
+mod windows;
 pub use app::LibreLearningApp;
 
 use wasm_bindgen::prelude::*;

@@ -97,6 +97,7 @@ pub struct LibreLearningApp {
 
     progress: f32,
     user_text_input: String,
+    text_input_has_focus: bool,
     strict_input_comparison: bool,
 
     is_next: bool,
@@ -119,6 +120,7 @@ impl Default for LibreLearningApp {
             add_new_card_threshold: 66.6,
             progress: 0.0,
             user_text_input: "".to_owned(), 
+            text_input_has_focus: false,
             strict_input_comparison: false,
             is_next: false,
             card_list: vec![Card {
@@ -298,195 +300,169 @@ impl eframe::App for LibreLearningApp {
         assert!(self.card_list.len() > 0);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::Window::new("Main Window")
-                .fixed_rect(egui::Rect::from_min_size(
-                    [0.0, 0.0].into(),
-                    [ui.available_width(), ui.available_height()].into(),
-                ))
-                .title_bar(false)
-                .open(&mut true)
-                .collapsible(false)
-                .show(ctx, |ui| {
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                        if self.show_settings {
-                            egui::Window::new("App Settings")
-                                .fixed_rect(egui::Rect::from_min_size(
-                                    [6.0, 40.0].into(),
-                                    [ui.available_width() - 10.0, ui.available_height() - 50.0]
-                                        .into(),
-                                ))
-                                .title_bar(false)
-                                .open(&mut self.show_settings)
-                                .collapsible(false)
-                                .show(ctx, |ui| {
-                                    ui.with_layout(
-                                        egui::Layout::bottom_up(egui::Align::LEFT),
-                                        |ui| {
-                                            ui.vertical_centered_justified(|ui| {
-                                                if ui
-                                                    .add(egui::Button::new(
-                                                        egui::RichText::new(
-                                                            "Connect/Edit Datasource",
-                                                        )
-                                                        .size(18.0)
-                                                        .color(egui::Color32::WHITE),
-                                                    ))
-                                                    .clicked()
-                                                {
-                                                }
-                                                ui.separator();
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                if self.show_settings {
+                    egui::Window::new("App Settings")
+                        .fixed_rect(egui::Rect::from_min_size(
+                            [6.0, 40.0].into(),
+                            [ui.available_width() - 10.0, ui.available_height() - 50.0].into(),
+                        ))
+                        .title_bar(false)
+                        .open(&mut self.show_settings)
+                        .collapsible(false)
+                        .show(ctx, |ui| {
+                            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                                ui.vertical_centered_justified(|ui| {
+                                    if ui
+                                        .add(egui::Button::new(
+                                            egui::RichText::new("Connect/Edit Datasource")
+                                                .size(18.0)
+                                                .color(egui::Color32::WHITE),
+                                        ))
+                                        .clicked()
+                                    {}
+                                    ui.separator();
 
-                                                ui.add(
-                                                    egui::Slider::new(
-                                                        &mut self.add_new_card_threshold,
-                                                        0.0..=100.0,
-                                                    )
-                                                    .text("Add New Card Threshold"),
-                                                );
-
-                                                ui.checkbox(
-                                                    &mut self.strict_input_comparison,
-                                                    "Strict Review",
-                                                );
-                                                ui.checkbox(
-                                                    &mut self.auto_play_audio,
-                                                    "Auto Play Audio",
-                                                );
-                                                ui.checkbox(
-                                                    &mut self.enable_sounds,
-                                                    "Enable Sounds",
-                                                );
-
-                                                if ui
-                                                    .add(egui::Button::new(
-                                                        egui::RichText::new("Reset App")
-                                                            .size(18.0)
-                                                            .color(egui::Color32::BLACK),
-                                                    ))
-                                                    .clicked()
-                                                {
-                                                    self.reset_app = true;
-                                                }
-                                            });
-                                        },
+                                    ui.add(
+                                        egui::Slider::new(
+                                            &mut self.add_new_card_threshold,
+                                            0.0..=100.0,
+                                        )
+                                        .text("Add New Card Threshold"),
                                     );
+
+                                    ui.checkbox(&mut self.strict_input_comparison, "Strict Review");
+                                    ui.checkbox(&mut self.auto_play_audio, "Auto Play Audio");
+                                    ui.checkbox(&mut self.enable_sounds, "Enable Sounds");
+
+                                    if ui
+                                        .add(egui::Button::new(
+                                            egui::RichText::new("Reset App")
+                                                .size(18.0)
+                                                .color(egui::Color32::BLACK),
+                                        ))
+                                        .clicked()
+                                    {
+                                        self.reset_app = true;
+                                    }
                                 });
-                        }
-                        ui.add(
-                            egui::widgets::ProgressBar::new(self.progress)
-                                .desired_width(ui.available_width() - 36.0)
-                                .show_percentage(),
-                        );
-
-                        if ui
-                            .add(
-                                egui::Button::new(egui::RichText::new("⚙").size(18.0))
-                                    .fill(egui::Color32::BLACK),
-                            )
-                            .clicked()
-                        {
-                            self.show_settings = !self.show_settings;
-                        }
-                    });
-
-                    ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
-                    ui.heading(egui::RichText::new(
-                        self.card_list[0].display_data.get_question(),
-                    ));
-                    ui.separator();
-
-                    ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
-
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                        let play_audio_text = if self.card_list[0].display_data.has_audio_item() {
-                            "🔊"
-                        } else {
-                            "🔇"
-                        };
-
-                        if ui
-                            .add(
-                                egui::Button::new(egui::RichText::new(play_audio_text).size(20.0))
-                                    .frame(false),
-                            )
-                            .clicked()
-                        {
-                            self.card_list[0].display_data.play_audio_item();
-                        }
-
-                        ui.label(
-                            egui::RichText::new(self.card_list[0].display_data.get_context())
-                                .color(egui::Color32::WHITE)
-                                .size(20.0),
-                        );
-                    });
-
-                    ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
-                    ui.vertical_centered_justified(|ui| {
-                        self.card_list[0]
-                            .display_data
-                            .get_image()
-                            .map(|img| img.show_size(ui, egui::Vec2 { x: 200.0, y: 200.0 }));
-                    });
-
-                    ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
-                    ui.add(
-                        egui::TextEdit::multiline(&mut self.user_text_input)
-                            //.frame(false)
-                            .hint_text(egui::RichText::new(
-                                self.card_list[0].display_data.get_input_field_placeholder(),
-                            )) // Type the Indonesian translation // Type what you hear
-                            .text_color(egui::Color32::WHITE)
-                            .font(egui::FontId::proportional(20.0))
-                            //.lock_focus(true)
-                            .desired_width(f32::INFINITY),
-                    );
-
-                    let mut available_space: egui::Vec2 = ui.available_size();
-                    available_space.y = available_space.y - 60.0;
-                    ui.allocate_space(available_space);
-
-                    ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                        if self.add_new_card_threshold <= self.progress {
-                            if ui
-                                .add(
-                                    egui::Button::new(
-                                        egui::RichText::new("+ Add New Card")
-                                            .size(20.0)
-                                            .color(egui::Color32::BLACK),
-                                    )
-                                    .fill(egui::Color32::GREEN),
-                                )
-                                .clicked()
-                            {
-                                self.static_audio
-                                    .play_audio(&StaticSounds::MessageNewInstant);
-                                // TODO trigger new card to load. // and call next so the new card gets scheduled.
-                            }
-                        }
-                        ui.vertical_centered_justified(|ui| {
-                            let check = ui.button(egui::RichText::new("↩").size(20.0));
-                            if check.clicked() {
-                                self.card_list[0].meta_data.timestamps.push(Date::now());
-                                if self.user_text_input
-                                    == self.card_list[0].display_data.get_label()
-                                {
-                                    self.static_audio.play_audio(&StaticSounds::BeginningOfLine); // MessageNewInstant
-                                    if self.enable_sounds {
-                                        self.card_list[0].meta_data.scores.push(true);
-                                    }
-                                } else {
-                                    // TODO change color for button in red blinking.
-                                    if self.enable_sounds {
-                                        self.static_audio.play_audio(&StaticSounds::ServiceLogout);
-                                    }
-                                    self.card_list[0].meta_data.scores.push(false);
-                                }
-                                self.next();
-                            }
+                            });
                         });
-                    });
+                }
+                ui.add(
+                    egui::widgets::ProgressBar::new(self.progress)
+                        .desired_width(ui.available_width() - 36.0)
+                        .show_percentage(),
+                );
+
+                if ui
+                    .add(
+                        egui::Button::new(egui::RichText::new("⚙").size(18.0))
+                            .fill(egui::Color32::BLACK),
+                    )
+                    .clicked()
+                {
+                    self.show_settings = !self.show_settings;
+                }
+            });
+
+            ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
+            ui.heading(egui::RichText::new(
+                self.card_list[0].display_data.get_question(),
+            ));
+            ui.separator();
+
+            ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
+
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                let play_audio_text = if self.card_list[0].display_data.has_audio_item() {
+                    "🔊"
+                } else {
+                    "🔇"
+                };
+
+                if ui
+                    .add(
+                        egui::Button::new(egui::RichText::new(play_audio_text).size(20.0))
+                            .frame(false),
+                    )
+                    .clicked()
+                {
+                    self.card_list[0].display_data.play_audio_item();
+                }
+
+                ui.label(
+                    egui::RichText::new(self.card_list[0].display_data.get_context())
+                        .color(egui::Color32::WHITE)
+                        .size(20.0),
+                );
+            });
+
+            ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
+            ui.vertical_centered_justified(|ui| {
+                self.card_list[0]
+                    .display_data
+                    .get_image()
+                    .map(|img| img.show_size(ui, egui::Vec2 { x: 200.0, y: 200.0 }));
+                // note this is not efficient
+            });
+
+            ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
+            let text_input_response = ui.add(
+                egui::TextEdit::multiline(&mut self.user_text_input)
+                    //.frame(false)
+                    .cursor_at_end(true)
+                    .hint_text(egui::RichText::new(
+                        self.card_list[0].display_data.get_input_field_placeholder(),
+                    )) // Type the Indonesian translation // Type what you hear
+                    .text_color(egui::Color32::WHITE)
+                    .font(egui::FontId::proportional(20.0))
+                    //.lock_focus(true)
+                    .desired_width(f32::INFINITY),
+            );
+
+            let mut available_space: egui::Vec2 = ui.available_size();
+            available_space.y = available_space.y - 60.0;
+            ui.allocate_space(available_space);
+
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                if self.add_new_card_threshold <= self.progress {
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                egui::RichText::new("+ Add New Card")
+                                    .size(20.0)
+                                    .color(egui::Color32::BLACK),
+                            )
+                            .fill(egui::Color32::GREEN),
+                        )
+                        .clicked()
+                    {
+                        self.static_audio
+                            .play_audio(&StaticSounds::MessageNewInstant);
+                        // TODO trigger new card to load. // and call next so the new card gets scheduled.
+                    }
+                }
+                ui.vertical_centered_justified(|ui| {
+                    let check = ui.button(egui::RichText::new("↩").size(20.0));
+                    if check.clicked() {
+                        self.card_list[0].meta_data.timestamps.push(Date::now());
+                        if self.user_text_input == self.card_list[0].display_data.get_label() {
+                            self.static_audio.play_audio(&StaticSounds::BeginningOfLine); // MessageNewInstant
+                            if self.enable_sounds {
+                                self.card_list[0].meta_data.scores.push(true);
+                            }
+                        } else {
+                            // TODO change color for button in red blinking.
+                            if self.enable_sounds {
+                                self.static_audio.play_audio(&StaticSounds::ServiceLogout);
+                            }
+                            self.card_list[0].meta_data.scores.push(false);
+                        }
+                        self.next();
+                    }
                 });
+            });
         });
 
         if self.auto_play_audio && self.is_next {
