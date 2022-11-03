@@ -18,10 +18,10 @@ derivative = "2.2.0"
 #chrono = "0.4.22"
 
 # native:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tracing-subscriber = "0.3" 
-rodio = {version = "0.16.0", default-features = false, features = [ "flac", "vorbis", "wav" ] }
-bytes = "1.2.1"
+#[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+#tracing-subscriber = "0.3" 
+#rodio = {version = "0.16.0", default-features = false, features = [ "flac", "vorbis", "wav" ] }
+#bytes = "1.2.1"
 # todo test audio.
 # todo impl timestamp with systemtime or chrono.
 
