@@ -1,3 +1,4 @@
+pub mod card;
 pub mod settings;
 
 /// Something to view in a window
@@ -12,4 +13,9 @@ pub trait Window {
 
     /// Show windows, etc
     fn show(&mut self, ctx: &egui::Context, open: &mut bool);
+}
+
+/// Something to view in a window
+pub trait CardView {
+    fn ui(&mut self, ui: &mut egui::Ui, card_display_data: &mut super::app::CardDisplayData);
 }

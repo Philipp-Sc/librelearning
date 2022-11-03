@@ -1,5 +1,5 @@
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct SettingsWindow {
+pub struct SettingsDisplay {
     pub auto_play_audio: bool,
     pub enable_sounds: bool,
     pub add_new_card_threshold: f32,
@@ -9,7 +9,7 @@ pub struct SettingsWindow {
     pub reset_app: bool,
 }
 
-impl Default for SettingsWindow {
+impl Default for SettingsDisplay {
     fn default() -> Self {
         Self {
             auto_play_audio: false,
@@ -21,7 +21,7 @@ impl Default for SettingsWindow {
     }
 }
 
-impl super::Window for SettingsWindow {
+impl super::Window for SettingsDisplay {
     fn name(&self) -> &'static str {
         "App Settings"
     }
@@ -45,7 +45,7 @@ impl super::Window for SettingsWindow {
     }
 }
 
-impl super::View for SettingsWindow {
+impl super::View for SettingsDisplay {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
             ui.vertical_centered_justified(|ui| {

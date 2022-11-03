@@ -1,4 +1,4 @@
-use super::app::CardMeta;
+use super::app::CardMetaData;
 
 use wasm_bindgen::prelude::*;
 
@@ -27,7 +27,7 @@ impl Default for SpacedRepetition {
 
 pub fn estimate_next_session_timestamp(
     my_class: &mut SpacedRepetition,
-    meta_data: &mut CardMeta,
+    meta_data: &mut CardMetaData,
 ) -> f64 {
     my_class.calculateEBISU(
         meta_data.id,

@@ -9,8 +9,9 @@ use js_sys::Date;
 use super::spaced_repetition::*;
 use std::collections::HashMap;
 
+use super::windows::card::*;
 use super::windows::settings::*;
-use super::windows::Window;
+use super::windows::*;
 
 // TODO: show error, if incorrect review.
 // TODO: option forgiving label == input evaluation.
@@ -28,7 +29,7 @@ use super::windows::Window;
 // then add telegram bot functionality.
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
-struct CardDisplay {
+pub struct CardDisplayData {
     question_text: String,
     context_text: String,
     label_text: String,
@@ -37,25 +38,25 @@ struct CardDisplay {
     image_item: Option<ImageItem>,
 }
 
-impl CardDisplay {
-    fn get_question(&self) -> String {
+impl CardDisplayData {
+    pub fn get_question(&self) -> String {
         // Translate this sentence // What is the next word? // Pronounce this sentence
         self.question_text.to_owned()
     }
-    fn get_context(&self) -> String {
+    pub fn get_context(&self) -> String {
         // Terima kasih, selamat idul fitri. // Where are you from? // What is your name?
         self.context_text.to_owned()
     }
-    fn get_label(&self) -> String {
+    pub fn get_label(&self) -> String {
         // Thank you, happy eid. // Kamu dari mana? // Nama kamu apa?
         self.label_text.to_owned()
     }
-    fn get_input_field_placeholder(&self) -> String {
+    pub fn get_input_field_placeholder(&self) -> String {
         // Type the English translation // Type the Indonesian translation // Type what you hear
         self.placeholder_text.to_owned()
     }
 
-    fn get_image(&mut self) -> Option<RetainedImage> {
+    pub fn get_image(&mut self) -> Option<RetainedImage> {
         if let Some(ref mut image_item) = &mut self.image_item {
             image_item.get_image()
         } else {
@@ -63,18 +64,18 @@ impl CardDisplay {
         }
     }
 
-    fn play_audio_item(&mut self) {
+    pub fn play_audio_item(&mut self) {
         if let Some(audio_item) = &mut self.audio_item {
             audio_item.play();
         }
     }
-    fn has_audio_item(&self) -> bool {
+    pub fn has_audio_item(&self) -> bool {
         self.audio_item.is_some()
     }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
-pub struct CardMeta {
+pub struct CardMetaData {
     pub id: u16, // max value is 65535 // switch to u32 if to small.
     pub timestamps: Vec<f64>,
     pub scores: Vec<bool>,
@@ -82,14 +83,17 @@ pub struct CardMeta {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 struct Card {
-    display_data: CardDisplay,
-    meta_data: CardMeta,
+    display_data: CardDisplayData,
+    meta_data: CardMetaData,
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct LibreLearningApp {
-    settings: SettingsWindow,
+    settings_display: SettingsDisplay,
+
+    #[serde(skip)]
+    card_display: CardDisplay,
 
     #[serde(skip)]
     static_audio: StaticAudio,
@@ -110,7 +114,8 @@ pub struct LibreLearningApp {
 impl Default for LibreLearningApp {
     fn default() -> Self {
         Self {
-            settings: SettingsWindow::default(),
+            settings_display: SettingsDisplay::default(),
+            card_display: CardDisplay::default(),
             static_audio: StaticAudio::new(),
             show_settings: false,
             progress: 0.0,
@@ -118,7 +123,7 @@ impl Default for LibreLearningApp {
             text_input_has_focus: false,
             is_next: false,
             card_list: vec![Card {
-                                display_data: CardDisplay {
+                                display_data: CardDisplayData {
                                     question_text: "Translate this sentence".to_owned(), 
                                     context_text: "Terima kasih, selamat idul fitri.".to_owned(),
                                     label_text: "Thank you, happy eid.".to_owned(),
@@ -126,14 +131,14 @@ impl Default for LibreLearningApp {
                                     audio_item: Some(AudioItem::new("https://dobrian.github.io/cmp/topics/sample-recording-and-playback-with-web-audio-api/freejazz.wav")),
                                     image_item: Some(ImageItem::new("https://raw.githubusercontent.com/Philipp-Sc/librelearning/main/assets/DALL_E_Terima_kasih__Selamat_idul_fitri.png")),
                                 },
-                                meta_data: CardMeta {
+                                meta_data: CardMetaData {
                                     id: 0,
                                     timestamps: Vec::new(),
                                     scores: Vec::new(),
                                 },
                             },
                             Card {
-                                display_data: CardDisplay {
+                                display_data: CardDisplayData {
                                     question_text: "What is the missing word?".to_owned(), 
                                     context_text: "______ kasih, selamat idul fitri.".to_owned(),
                                     label_text: "Terima".to_owned(),
@@ -141,14 +146,14 @@ impl Default for LibreLearningApp {
                                     audio_item: None,
                                     image_item: None,
                                 },
-                                meta_data: CardMeta {
+                                meta_data: CardMetaData {
                                     id: 1,
                                     timestamps: Vec::new(),
                                     scores: Vec::new(),
                                 },
                             },
                             Card {
-                                display_data: CardDisplay {
+                                display_data: CardDisplayData {
                                     question_text: "What is the missing word?".to_owned(), 
                                     context_text: "Terima kasih, _______ idul fitri.".to_owned(),
                                     label_text: "selamat".to_owned(),
@@ -156,7 +161,7 @@ impl Default for LibreLearningApp {
                                     audio_item: None,
                                     image_item: None,
                                 },
-                                meta_data: CardMeta {
+                                meta_data: CardMetaData {
                                     id: 2,
                                     timestamps: Vec::new(),
                                     scores: Vec::new(),
@@ -289,14 +294,14 @@ impl eframe::App for LibreLearningApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.settings.reset_app {
+        if self.settings_display.reset_app {
             *self = Default::default();
         }
         assert!(self.card_list.len() > 0);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                self.settings.show(ctx, &mut self.show_settings);
+                self.settings_display.show(ctx, &mut self.show_settings);
 
                 ui.add(
                     egui::widgets::ProgressBar::new(self.progress)
@@ -315,45 +320,10 @@ impl eframe::App for LibreLearningApp {
                 }
             });
 
-            ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
-            ui.heading(egui::RichText::new(
-                self.card_list[0].display_data.get_question(),
-            ));
-            ui.separator();
-
-            ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
-
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                let play_audio_text = if self.card_list[0].display_data.has_audio_item() {
-                    "🔊"
-                } else {
-                    "🔇"
-                };
-
-                if ui
-                    .add(
-                        egui::Button::new(egui::RichText::new(play_audio_text).size(20.0))
-                            .frame(false),
-                    )
-                    .clicked()
-                {
-                    self.card_list[0].display_data.play_audio_item();
-                }
-
-                ui.label(
-                    egui::RichText::new(self.card_list[0].display_data.get_context())
-                        .color(egui::Color32::WHITE)
-                        .size(20.0),
-                );
-            });
-
-            ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
-            ui.vertical_centered_justified(|ui| {
-                self.card_list[0].display_data.get_image().map(
-                    |img| img.show(ui), /*_size(ui, egui::Vec2 { x: 200.0, y: 200.0 }))*/
-                );
-                // note this is not efficient
-            });
+            if !self.show_settings {
+                self.card_display
+                    .ui(ui, &mut self.card_list[0].display_data);
+            }
 
             ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
             let text_input_response = ui.add(
@@ -374,7 +344,7 @@ impl eframe::App for LibreLearningApp {
             ui.allocate_space(available_space);
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                if self.settings.add_new_card_threshold <= self.progress {
+                if self.settings_display.add_new_card_threshold <= self.progress {
                     if ui
                         .add(
                             egui::Button::new(
@@ -386,7 +356,7 @@ impl eframe::App for LibreLearningApp {
                         )
                         .clicked()
                     {
-                        if self.settings.enable_sounds {
+                        if self.settings_display.enable_sounds {
                             self.static_audio
                                 .play_audio(&StaticSounds::MessageNewInstant);
                         }
@@ -399,12 +369,12 @@ impl eframe::App for LibreLearningApp {
                         self.card_list[0].meta_data.timestamps.push(Date::now());
                         if self.user_text_input == self.card_list[0].display_data.get_label() {
                             self.static_audio.play_audio(&StaticSounds::BeginningOfLine); // MessageNewInstant
-                            if self.settings.enable_sounds {
+                            if self.settings_display.enable_sounds {
                                 self.card_list[0].meta_data.scores.push(true);
                             }
                         } else {
                             // TODO change color for button in red blinking.
-                            if self.settings.enable_sounds {
+                            if self.settings_display.enable_sounds {
                                 self.static_audio.play_audio(&StaticSounds::ServiceLogout);
                             }
                             self.card_list[0].meta_data.scores.push(false);
@@ -415,7 +385,7 @@ impl eframe::App for LibreLearningApp {
             });
         });
 
-        if self.settings.auto_play_audio && self.is_next {
+        if self.settings_display.auto_play_audio && self.is_next {
             self.card_list[0].display_data.play_audio_item();
             self.is_next = false;
         }
