@@ -18,7 +18,7 @@ export function play_audio_from_uint8_array(uint8_array){
   }); 
  
   function play() { 
-    gainNode.gain.value = 0.1;
+    gainNode.gain.value = 1;
     var source = context.createBufferSource();
     source.buffer = buf; 
     source.connect(gainNode).connect(context.destination); 
