@@ -2,8 +2,9 @@ var cacheName = 'libre-learning-pwa';
 var filesToCache = [
   './',
   './index.html',
-  './eframe_template.js',
-  './eframe_template_bg.wasm', 
+  './libre_learning.js',
+  './libre_learning_bg.wasm', 
+  './ebisu.min.es6.js'
 ];
 
 /* Start the service worker and cache all of the app's content */
