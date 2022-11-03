@@ -1,10 +1,6 @@
 use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen(module = "/defined-in-js.js")]
-extern "C" {
-    pub fn play_audio_from_uint8_array(uint8_array: js_sys::Uint8Array);
-}
-
+use wasm_bindgen::JsCast;
+ 
 pub enum StaticSounds {
     DialogWarning,
     BeginningOfLine,
@@ -54,12 +50,19 @@ impl StaticAudio {
         let array = js_sys::Uint8Array::new_with_length(length);
         array.copy_from(&sound[..]);
 
-        play_audio_from_uint8_array(array);
+        let context = web_sys::AudioContext::new().unwrap(); 
 
-        //let mut context = web_sys::AudioContext::new().unwrap();
-        //context.decode_audio_data(&array.buffer());
-        //let _decodedData = wasm_bindgen_futures::JsFuture::from(promise).await.unwrap();
-        //context.create_buffer_source().unwrap().start();
-        //super::log(&format!("{:?}",decodedData));
+        let source: web_sys::AudioBufferSourceNode = context.create_buffer_source().unwrap(); 
+        let destination: web_sys::AudioDestinationNode = context.destination();
+
+        let f = Closure::once_into_js(move|buf: JsValue| { 
+            let array_buffer = web_sys::AudioBuffer::from(buf);
+            source.set_buffer(Some(&array_buffer));
+            source.connect_with_audio_node(&destination).ok(); 
+            source.start().ok();
+        });
+
+        let _promise = context.decode_audio_data_with_success_callback(&array.buffer(),f.dyn_ref::<js_sys::Function>().unwrap()).unwrap();
+        //let result = wasm_bindgen_futures::JsFuture::from(promise).await?; // async
     }
 }

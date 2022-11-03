@@ -4,28 +4,6 @@ export function is_ready(){
   document.getElementById("center_text").remove();
 }
 
-// TODO: use web_sys ['AudioContext','AudioBufferSourceNode'] and js-sys instead
-export function play_audio_from_uint8_array(uint8_array){ 
-
-  console.log("Playing Audio"); 
- 
-  var context = new AudioContext();
-  var buf;
-  const gainNode = context.createGain();
-  context.decodeAudioData(uint8_array.buffer, function(buffer) {
-    buf = buffer;
-    play();
-  }); 
- 
-  function play() { 
-    gainNode.gain.value = 1;
-    var source = context.createBufferSource();
-    source.buffer = buf; 
-    source.connect(gainNode).connect(context.destination); 
-    source.start(0);
-  }   
-}
-
 /**
  * ebisu.js placed in assets:
  *  - assets/ebisu.min.es6.js (see https://raw.githubusercontent.com/fasiha/ebisu.js)

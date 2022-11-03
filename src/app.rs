@@ -9,9 +9,8 @@ use js_sys::Date;
 use super::spaced_repetition::*;
 use std::collections::HashMap;
 
-// TODO: use web_sys and sys-js for sound instead of current solution.
-
-// TODO: publish on github pages, test on mobile.
+// TODO: show error, if incorrect review.
+// TODO: option forgiving label == input evaluation.
 
 // TODO authentication, only be able to access my own files. (image url/audio url), consider cryptic link or login.
 
