@@ -68,6 +68,7 @@ impl StaticAudio {
                 f.dyn_ref::<js_sys::Function>().unwrap(),
             )
             .unwrap();
-        //let result = wasm_bindgen_futures::JsFuture::from(promise).await?; // async
+
+        //let result = wasm_bindgen_futures::JsFuture::from(promise).await;
     }
 }
