@@ -2,6 +2,10 @@
 export function is_ready(){ 
   console.log("App is ready.");
   document.getElementById("center_text").remove();
+
+  // workaround for https://github.com/emilk/egui/issues/2231
+  document.getElementById("the_canvas_id").classList.add("top-always-zero-percent");
+
 }
 
 /**

@@ -29,6 +29,10 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#404040">
 
     <style>
+        .top-always-zero-percent {
+            /* workaround for https://github.com/emilk/egui/issues/2231 */
+            top: 0% !important;
+        }
         html {
             /* Remove touch delay: */
             touch-action: manipulation;
