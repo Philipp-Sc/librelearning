@@ -1,16 +1,22 @@
+use difference::{Changeset, Difference};
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ReviewDisplay {
     close: bool,
-    display_text: String,
+    is_equal: bool,
     is_correct: bool,
+
+    #[serde(skip)]
+    diffs: Vec<Difference>,
 }
 
 impl Default for ReviewDisplay {
     fn default() -> Self {
         Self {
             close: false,
-            display_text: "".to_owned(),
+            is_equal: false,
             is_correct: false,
+            diffs: Vec::new(),
         }
     }
 }
@@ -32,8 +38,11 @@ impl super::ReviewWindow for ReviewDisplay {
             *open = false;
             self.close = false;
         } else if *open {
-            self.display_text = label.to_owned();
+            self.is_equal = label == text;
             self.is_correct = *score;
+
+            let changeset = Changeset::new(label, text, "");
+            self.diffs = changeset.diffs;
 
             let available_rect = ctx.available_rect();
 
@@ -78,10 +87,14 @@ impl super::View for ReviewDisplay {
         ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
             ui.label(
                 egui::RichText::new(if self.is_correct {
-                    "  ✅ Excellent!"
+                    if self.is_equal {
+                        "  ✅ Excellent!"
+                    } else {
+                        "  ✅ You have a typo in your answer:"
+                    }
                 } else {
                     "   ❌ Correct solution:"
-                }) // You have a typo in your answer: // Nicely done. Meaning: // Excellent! // Nicely done. // Good job!
+                }) // Nicely done. Meaning: // Excellent! // Nicely done. // Good job!
                 .color(if self.is_correct {
                     egui::Color32::GREEN
                 } else {
@@ -94,7 +107,43 @@ impl super::View for ReviewDisplay {
 
             ui.allocate_space(egui::Vec2 { x: 0.0, y: 5.0 });
         });
+
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+            ui.allocate_space(egui::Vec2 { x: 20.0, y: 0.0 });
+            for c in &self.diffs {
+                match *c {
+                    Difference::Same(ref z) => {
+                        ui.label(
+                            egui::RichText::new(z)
+                                .color(egui::Color32::GREEN)
+                                .size(20.0)
+                                .monospace(),
+                        );
+                    }
+                    Difference::Add(ref z) => {
+                        ui.label(
+                            egui::RichText::new(z)
+                                .color(egui::Color32::WHITE)
+                                .background_color(egui::Color32::RED)
+                                .size(20.0)
+                                .monospace(),
+                        );
+                    }
+                    Difference::Rem(ref z) => {
+                        ui.label(
+                            egui::RichText::new(z)
+                                .color(egui::Color32::WHITE)
+                                .background_color(egui::Color32::RED)
+                                .size(20.0)
+                                .monospace(),
+                        );
+                    }
+                }
+            }
+        });
+
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+            /*
             ui.label(
                 egui::RichText::new(&self.display_text)
                     .color(if self.is_correct {
@@ -104,7 +153,7 @@ impl super::View for ReviewDisplay {
                     })
                     .size(20.0)
                     .monospace(),
-            );
+            );*/
 
             ui.allocate_space(egui::Vec2 { x: 0.0, y: 10.0 });
 

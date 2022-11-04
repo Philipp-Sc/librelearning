@@ -16,17 +16,15 @@ use super::windows::*;
 
 use std::ops::*;
 
-// TODO: show error, if incorrect review.
-// TODO: option forgiving label == input evaluation.
-
-// TODO: replace test data.
+// TODO: show mistakes in review.
 
 // TODO authentication, only be able to access my own files. (image url/audio url), consider cryptic link or login.
-
-// client makes request, sending all card_ids it has, and requests a new card.
-// server answers with some(new card) or none.
+// rocket.rs -> learn and implement 1) server I can login via user/password or cookie. 2) request files. everything is a file.
 
 // create simple server that hosts files from IL chinese.
+
+// TODO: impl add/fetch card.
+
 // then add telegram bot functionality.
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
