@@ -235,7 +235,7 @@ impl LibreLearningApp {
                     &mut self.space_repetition_model,
                     &mut self.card_list[i].meta_data,
                 );
-                let date = Date::new(&wasm_bindgen::JsValue::from_f64(time));
+                // let date = Date::new(&wasm_bindgen::JsValue::from_f64(time));
                 /*
                 super::log(&format!(
                     "Card_ID: {}\nCard_Question: {}\n{:?}\n{:?}",
@@ -305,8 +305,7 @@ impl eframe::App for LibreLearningApp {
 
                 ui.add(
                     egui::widgets::ProgressBar::new(self.progress)
-                        .desired_width(ui.available_width() - 36.0)
-                        .show_percentage(),
+                        .desired_width(ui.available_width() - 36.0), //.show_percentage(),
                 );
 
                 if ui
@@ -325,10 +324,9 @@ impl eframe::App for LibreLearningApp {
                     .ui(ui, &mut self.card_list[0].display_data);
             }
 
-            ui.allocate_space(egui::Vec2 { x: 0.0, y: 40.0 });
-            let text_input_response = ui.add(
+            let _text_input_response = ui.add(
                 egui::TextEdit::multiline(&mut self.user_text_input)
-                    //.frame(false)
+                    .frame(false)
                     .cursor_at_end(true)
                     .hint_text(egui::RichText::new(
                         self.card_list[0].display_data.get_input_field_placeholder(),
@@ -339,8 +337,9 @@ impl eframe::App for LibreLearningApp {
                     .desired_width(f32::INFINITY),
             );
 
+            // take up the available space, but not the last 35 pixels.
             let mut available_space: egui::Vec2 = ui.available_size();
-            available_space.y = available_space.y - 60.0;
+            available_space.y = available_space.y - 40.0;
             ui.allocate_space(available_space);
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
@@ -364,7 +363,7 @@ impl eframe::App for LibreLearningApp {
                     }
                 }
                 ui.vertical_centered_justified(|ui| {
-                    let check = ui.button(egui::RichText::new("↩").size(20.0));
+                    let check = ui.button(egui::RichText::new("↩").size(30.0));
                     if check.clicked() {
                         self.card_list[0].meta_data.timestamps.push(Date::now());
                         if self.user_text_input == self.card_list[0].display_data.get_label() {

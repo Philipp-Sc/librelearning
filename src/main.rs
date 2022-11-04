@@ -32,5 +32,7 @@ async fn main() {
         "the_canvas_id", // hardcode it
         web_options,
         Box::new(|cc| Box::new(libre_learning::LibreLearningApp::new(cc))),
-    ).await; 
+    )
+    .await
+    .expect("failed to start eframe");
 }
