@@ -10,8 +10,11 @@ use super::spaced_repetition::*;
 use std::collections::HashMap;
 
 use super::windows::card::*;
+use super::windows::review::*;
 use super::windows::settings::*;
 use super::windows::*;
+
+use std::ops::*;
 
 // TODO: show error, if incorrect review.
 // TODO: option forgiving label == input evaluation.
@@ -45,11 +48,14 @@ impl CardDisplayData {
         // Terima kasih, selamat idul fitri. // Where are you from? // What is your name?
         self.context_text.to_owned()
     }
-    pub fn get_label(&self, ignore_punctuation_symbols: bool) -> String {
+    pub fn get_label(&self, ignore_punctuation_symbols: bool, match_case: bool) -> String {
         // Thank you, happy eid. // Kamu dari mana? // Nama kamu apa?
         let mut label = self.label_text.to_owned();
         if ignore_punctuation_symbols {
-            label.replace(&['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..], "");
+            label = label.replace(&['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..], "");
+        }
+        if !match_case {
+            label = label.to_lowercase();
         }
         label
     }
@@ -98,9 +104,14 @@ pub struct LibreLearningApp {
     card_display: CardDisplay,
 
     #[serde(skip)]
+    review_display: ReviewDisplay,
+
+    #[serde(skip)]
     static_audio: StaticAudio,
 
     show_settings: bool,
+    show_review: bool,
+    card_reviewd: bool,
 
     progress: f32,
     user_text_input: String,
@@ -118,8 +129,11 @@ impl Default for LibreLearningApp {
         Self {
             settings_display: SettingsDisplay::default(),
             card_display: CardDisplay::default(),
+            review_display: ReviewDisplay::default(),
             static_audio: StaticAudio::new(),
             show_settings: false,
+            show_review: false,
+            card_reviewd:false,
             progress: 0.0,
             user_text_input: "".to_owned(), 
             text_input_has_focus: false,
@@ -302,6 +316,21 @@ impl eframe::App for LibreLearningApp {
         assert!(self.card_list.len() > 0);
 
         self.settings_display.show(ctx, &mut self.show_settings);
+        self.review_display.show(
+            ctx,
+            &mut self.show_review,
+            &self.card_list[0].display_data.get_label(
+                self.settings_display.ignore_punctuation_symbols,
+                self.settings_display.match_case,
+            ),
+            &self.user_text_input,
+            &self.card_list[0].meta_data.scores.last().unwrap_or(&false),
+        );
+
+        if !self.show_review && self.card_reviewd {
+            self.next();
+            self.card_reviewd = false;
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
@@ -325,7 +354,8 @@ impl eframe::App for LibreLearningApp {
                 self.card_display
                     .ui(ui, &mut self.card_list[0].display_data);
 
-                let _text_input_response = ui.add(
+                let _text_input_response = ui.add_sized(
+                    ui.available_size().sub([0.0, 40.0].into()),
                     egui::TextEdit::multiline(&mut self.user_text_input)
                         .frame(false)
                         .cursor_at_end(true)
@@ -348,6 +378,8 @@ impl eframe::App for LibreLearningApp {
                     |ui| {
                         let check = ui.add(egui::Button::new(egui::RichText::new("↩").size(30.0)));
                         if check.clicked() {
+                            self.show_review = true;
+
                             self.card_list[0].meta_data.timestamps.push(Date::now());
                             if self.settings_display.ignore_punctuation_symbols {
                                 self.user_text_input = self.user_text_input.replace(
@@ -355,11 +387,15 @@ impl eframe::App for LibreLearningApp {
                                     "",
                                 );
                             }
+                            if !self.settings_display.match_case {
+                                self.user_text_input = self.user_text_input.to_lowercase();
+                            }
                             if edit_distance::edit_distance(
                                 &self.user_text_input,
-                                &self.card_list[0]
-                                    .display_data
-                                    .get_label(self.settings_display.ignore_punctuation_symbols),
+                                &self.card_list[0].display_data.get_label(
+                                    self.settings_display.ignore_punctuation_symbols,
+                                    self.settings_display.match_case,
+                                ),
                             ) <= self.settings_display.spelling_correction_threshold
                             {
                                 self.static_audio
@@ -377,7 +413,7 @@ impl eframe::App for LibreLearningApp {
                                 }
                                 self.card_list[0].meta_data.scores.push(false);
                             }
-                            self.next();
+                            self.card_reviewd = true;
                         }
                     },
                 );

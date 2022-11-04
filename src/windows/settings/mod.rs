@@ -6,7 +6,7 @@ pub struct SettingsDisplay {
     pub add_new_card_threshold: f32,
     pub spelling_correction_threshold: usize,
     pub ignore_punctuation_symbols: bool,
-    pub review_mistakes: bool,
+    pub match_case: bool,
 
     #[serde(skip)]
     pub reset_app: bool,
@@ -21,7 +21,7 @@ impl Default for SettingsDisplay {
             add_new_card_threshold: 66.6,
             spelling_correction_threshold: 1,
             ignore_punctuation_symbols: true,
-            review_mistakes: true,
+            match_case: false,
             reset_app: false,
         }
     }
@@ -33,21 +33,22 @@ impl super::Window for SettingsDisplay {
     }
 
     fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-        let available_rect = ctx.available_rect();
+        if *open {
+            let available_rect = ctx.available_rect();
 
-        egui::Window::new(self.name())
-            .fixed_rect(egui::Rect::from_min_size(
-                [available_rect.min.x + 5.0, available_rect.min.y + 40.0].into(),
-                [available_rect.max.x - 20.0, available_rect.max.y - 60.0].into(),
-            ))
-            .open(open)
-            .resizable(false)
-            .title_bar(false)
-            .collapsible(false)
-            .show(ctx, |ui| {
-                use super::View as _;
-                self.ui(ui);
-            });
+            egui::Window::new(self.name())
+                .fixed_rect(egui::Rect::from_min_size(
+                    [available_rect.min.x + 5.0, available_rect.min.y + 40.0].into(),
+                    [available_rect.max.x - 20.0, available_rect.max.y - 60.0].into(),
+                ))
+                .resizable(false)
+                .title_bar(false)
+                .collapsible(false)
+                .show(ctx, |ui| {
+                    use super::View as _;
+                    self.ui(ui);
+                });
+        }
     }
 }
 
@@ -55,6 +56,7 @@ impl super::View for SettingsDisplay {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
             ui.vertical_centered_justified(|ui| {
+                // REST Endpoint to get new cards.
                 ui.checkbox(
                     &mut self.featch_new_card_at_threshold,
                     egui::RichText::new("Automaticaly Fetch New Cards").size(16.0),
@@ -68,7 +70,7 @@ impl super::View for SettingsDisplay {
                 if ui
                     .add(
                         egui::Button::new(
-                            egui::RichText::new("Fetch New Card Now").size(16.0), //.color(egui::Color32::BLACK),
+                            egui::RichText::new("Fetch New Card").size(16.0), //.color(egui::Color32::BLACK),
                         ), //.fill(egui::Color32::GREEN),
                     )
                     .clicked()
@@ -93,8 +95,8 @@ impl super::View for SettingsDisplay {
                     egui::RichText::new("Ignore Punctuation Symbols").size(16.0),
                 );
                 ui.checkbox(
-                    &mut self.review_mistakes,
-                    egui::RichText::new("Review Mistakes").size(16.0),
+                    &mut self.match_case,
+                    egui::RichText::new("Match Case").size(16.0),
                 );
 
                 ui.separator();
