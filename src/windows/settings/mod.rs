@@ -2,8 +2,11 @@
 pub struct SettingsDisplay {
     pub auto_play_audio: bool,
     pub enable_sounds: bool,
+    pub featch_new_card_at_threshold: bool,
     pub add_new_card_threshold: f32,
-    pub strict_input_comparison: bool,
+    pub spelling_correction_threshold: usize,
+    pub ignore_punctuation_symbols: bool,
+    pub review_mistakes: bool,
 
     #[serde(skip)]
     pub reset_app: bool,
@@ -14,8 +17,11 @@ impl Default for SettingsDisplay {
         Self {
             auto_play_audio: false,
             enable_sounds: true,
+            featch_new_card_at_threshold: true,
             add_new_card_threshold: 66.6,
-            strict_input_comparison: false,
+            spelling_correction_threshold: 1,
+            ignore_punctuation_symbols: true,
+            review_mistakes: true,
             reset_app: false,
         }
     }
@@ -32,7 +38,7 @@ impl super::Window for SettingsDisplay {
         egui::Window::new(self.name())
             .fixed_rect(egui::Rect::from_min_size(
                 [available_rect.min.x + 5.0, available_rect.min.y + 40.0].into(),
-                [available_rect.max.x - 20.0, available_rect.max.y - 90.0].into(),
+                [available_rect.max.x - 20.0, available_rect.max.y - 60.0].into(),
             ))
             .open(open)
             .resizable(false)
@@ -49,30 +55,78 @@ impl super::View for SettingsDisplay {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
             ui.vertical_centered_justified(|ui| {
-                if ui
-                    .add(egui::Button::new(
-                        egui::RichText::new("Connect/Edit Datasource")
-                            .size(18.0)
-                            .color(egui::Color32::WHITE),
-                    ))
-                    .clicked()
-                {}
-                ui.separator();
+                ui.checkbox(
+                    &mut self.featch_new_card_at_threshold,
+                    egui::RichText::new("Automaticaly Fetch New Cards").size(16.0),
+                );
 
                 ui.add(
                     egui::Slider::new(&mut self.add_new_card_threshold, 0.0..=100.0)
-                        .text("Add New Card Threshold"),
+                        .text(egui::RichText::new("New Card Threshold").size(16.0)),
                 );
 
-                ui.checkbox(&mut self.strict_input_comparison, "Strict Review");
-                ui.checkbox(&mut self.auto_play_audio, "Auto Play Audio");
-                ui.checkbox(&mut self.enable_sounds, "Enable Sounds");
+                if ui
+                    .add(
+                        egui::Button::new(
+                            egui::RichText::new("Fetch New Card Now").size(16.0), //.color(egui::Color32::BLACK),
+                        ), //.fill(egui::Color32::GREEN),
+                    )
+                    .clicked()
+                {
+                    /*
+                    if self.settings_display.enable_sounds {
+                        self.static_audio
+                            .play_audio(&StaticSounds::MessageNewInstant).ok();
+                    }*/
+                    // TODO trigger new card to load. // and call next so the new card gets scheduled.
+                }
+
+                ui.separator();
+
+                ui.add(
+                    egui::Slider::new(&mut self.spelling_correction_threshold, 0..=10)
+                        .text(egui::RichText::new("Permitted Spelling Mistakes").size(16.0)),
+                );
+
+                ui.checkbox(
+                    &mut self.ignore_punctuation_symbols,
+                    egui::RichText::new("Ignore Punctuation Symbols").size(16.0),
+                );
+                ui.checkbox(
+                    &mut self.review_mistakes,
+                    egui::RichText::new("Review Mistakes").size(16.0),
+                );
+
+                ui.separator();
+
+                ui.checkbox(
+                    &mut self.auto_play_audio,
+                    egui::RichText::new("Auto Play Audio").size(16.0),
+                );
+                ui.checkbox(
+                    &mut self.enable_sounds,
+                    egui::RichText::new("Enable Sounds").size(16.0),
+                );
+
+                ui.separator();
+                /*
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new("Connect Datasource")
+                            .size(18.0)
+                            //.color(egui::Color32::WHITE),
+                    ))
+                    .clicked()
+                {}*/
+
+                // take up the available space, but not the last 20 pixels.
+                let mut available_space: egui::Vec2 = ui.available_size();
+                available_space.y = available_space.y - 40.0;
+                ui.allocate_space(available_space);
 
                 if ui
                     .add(egui::Button::new(
-                        egui::RichText::new("Reset App")
-                            .size(18.0)
-                            .color(egui::Color32::BLACK),
+                        egui::RichText::new("Reset App").size(16.0), //.color(egui::Color32::BLACK),
                     ))
                     .clicked()
                 {

@@ -18,8 +18,6 @@ use super::windows::*;
 
 // TODO: replace test data.
 
-// TODO: make sure audio finishes playing before starting another.
-
 // TODO authentication, only be able to access my own files. (image url/audio url), consider cryptic link or login.
 
 // client makes request, sending all card_ids it has, and requests a new card.
@@ -47,9 +45,13 @@ impl CardDisplayData {
         // Terima kasih, selamat idul fitri. // Where are you from? // What is your name?
         self.context_text.to_owned()
     }
-    pub fn get_label(&self) -> String {
+    pub fn get_label(&self, ignore_punctuation_symbols: bool) -> String {
         // Thank you, happy eid. // Kamu dari mana? // Nama kamu apa?
-        self.label_text.to_owned()
+        let mut label = self.label_text.to_owned();
+        if ignore_punctuation_symbols {
+            label.replace(&['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..], "");
+        }
+        label
     }
     pub fn get_input_field_placeholder(&self) -> String {
         // Type the English translation // Type the Indonesian translation // Type what you hear
@@ -299,10 +301,10 @@ impl eframe::App for LibreLearningApp {
         }
         assert!(self.card_list.len() > 0);
 
+        self.settings_display.show(ctx, &mut self.show_settings);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                self.settings_display.show(ctx, &mut self.show_settings);
-
                 ui.add(
                     egui::widgets::ProgressBar::new(self.progress)
                         .desired_width(ui.available_width() - 36.0), //.show_percentage(),
@@ -322,66 +324,64 @@ impl eframe::App for LibreLearningApp {
             if !self.show_settings {
                 self.card_display
                     .ui(ui, &mut self.card_list[0].display_data);
+
+                let _text_input_response = ui.add(
+                    egui::TextEdit::multiline(&mut self.user_text_input)
+                        .frame(false)
+                        .cursor_at_end(true)
+                        .hint_text(egui::RichText::new(
+                            self.card_list[0].display_data.get_input_field_placeholder(),
+                        )) // Type the Indonesian translation // Type what you hear
+                        .text_color(egui::Color32::WHITE)
+                        .font(egui::FontId::proportional(20.0))
+                        //.lock_focus(true)
+                        .desired_width(f32::INFINITY),
+                );
+
+                // take up the available space, but not the last n pixels.
+                let mut available_space: egui::Vec2 = ui.available_size();
+                available_space.y = available_space.y - 40.0;
+                ui.allocate_space(available_space);
+
+                ui.with_layout(
+                    egui::Layout::left_to_right(egui::Align::BOTTOM).with_main_justify(true),
+                    |ui| {
+                        let check = ui.add(egui::Button::new(egui::RichText::new("↩").size(30.0)));
+                        if check.clicked() {
+                            self.card_list[0].meta_data.timestamps.push(Date::now());
+                            if self.settings_display.ignore_punctuation_symbols {
+                                self.user_text_input = self.user_text_input.replace(
+                                    &['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..],
+                                    "",
+                                );
+                            }
+                            if edit_distance::edit_distance(
+                                &self.user_text_input,
+                                &self.card_list[0]
+                                    .display_data
+                                    .get_label(self.settings_display.ignore_punctuation_symbols),
+                            ) <= self.settings_display.spelling_correction_threshold
+                            {
+                                self.static_audio
+                                    .play_audio(&StaticSounds::BeginningOfLine)
+                                    .ok(); // MessageNewInstant
+                                if self.settings_display.enable_sounds {
+                                    self.card_list[0].meta_data.scores.push(true);
+                                }
+                            } else {
+                                // TODO change color for button in red blinking.
+                                if self.settings_display.enable_sounds {
+                                    self.static_audio
+                                        .play_audio(&StaticSounds::ServiceLogout)
+                                        .ok();
+                                }
+                                self.card_list[0].meta_data.scores.push(false);
+                            }
+                            self.next();
+                        }
+                    },
+                );
             }
-
-            let _text_input_response = ui.add(
-                egui::TextEdit::multiline(&mut self.user_text_input)
-                    .frame(false)
-                    .cursor_at_end(true)
-                    .hint_text(egui::RichText::new(
-                        self.card_list[0].display_data.get_input_field_placeholder(),
-                    )) // Type the Indonesian translation // Type what you hear
-                    .text_color(egui::Color32::WHITE)
-                    .font(egui::FontId::proportional(20.0))
-                    //.lock_focus(true)
-                    .desired_width(f32::INFINITY),
-            );
-
-            // take up the available space, but not the last 35 pixels.
-            let mut available_space: egui::Vec2 = ui.available_size();
-            available_space.y = available_space.y - 40.0;
-            ui.allocate_space(available_space);
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                if self.settings_display.add_new_card_threshold <= self.progress {
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                egui::RichText::new("+ Add New Card")
-                                    .size(20.0)
-                                    .color(egui::Color32::BLACK),
-                            )
-                            .fill(egui::Color32::GREEN),
-                        )
-                        .clicked()
-                    {
-                        if self.settings_display.enable_sounds {
-                            self.static_audio
-                                .play_audio(&StaticSounds::MessageNewInstant);
-                        }
-                        // TODO trigger new card to load. // and call next so the new card gets scheduled.
-                    }
-                }
-                ui.vertical_centered_justified(|ui| {
-                    let check = ui.button(egui::RichText::new("↩").size(30.0));
-                    if check.clicked() {
-                        self.card_list[0].meta_data.timestamps.push(Date::now());
-                        if self.user_text_input == self.card_list[0].display_data.get_label() {
-                            self.static_audio.play_audio(&StaticSounds::BeginningOfLine); // MessageNewInstant
-                            if self.settings_display.enable_sounds {
-                                self.card_list[0].meta_data.scores.push(true);
-                            }
-                        } else {
-                            // TODO change color for button in red blinking.
-                            if self.settings_display.enable_sounds {
-                                self.static_audio.play_audio(&StaticSounds::ServiceLogout);
-                            }
-                            self.card_list[0].meta_data.scores.push(false);
-                        }
-                        self.next();
-                    }
-                });
-            });
         });
 
         if self.settings_display.auto_play_audio && self.is_next {

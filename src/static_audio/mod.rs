@@ -37,7 +37,7 @@ impl StaticAudio {
         }
     }
 
-    pub fn play_audio(&self, static_sound: &StaticSounds) {
+    pub fn play_audio(&self, static_sound: &StaticSounds) -> Result<(), wasm_bindgen::JsValue> {
         let sound = match static_sound {
             StaticSounds::DialogWarning => &self.dialog_warning,
             StaticSounds::BeginningOfLine => &self.beginning_of_line,
@@ -50,24 +50,28 @@ impl StaticAudio {
         let array = js_sys::Uint8Array::new_with_length(length);
         array.copy_from(&sound[..]);
 
-        let context = web_sys::AudioContext::new().unwrap();
+        let context = web_sys::AudioContext::new()?;
 
-        let source: web_sys::AudioBufferSourceNode = context.create_buffer_source().unwrap();
+        let source: web_sys::AudioBufferSourceNode = context.create_buffer_source()?;
         let destination: web_sys::AudioDestinationNode = context.destination();
 
         let f = Closure::once_into_js(move |buf: JsValue| {
             let array_buffer = web_sys::AudioBuffer::from(buf);
             source.set_buffer(Some(&array_buffer));
-            source.connect_with_audio_node(&destination).ok();
-            source.start().ok();
+            if source.connect_with_audio_node(&destination).is_ok() {
+                source.start().ok();
+            }
         });
 
         let _promise = context
             .decode_audio_data_with_success_callback(
                 &array.buffer(),
-                f.dyn_ref::<js_sys::Function>().unwrap(),
+                f.dyn_ref::<js_sys::Function>()
+                    .ok_or::<wasm_bindgen::JsValue>(Default::default())?,
             )
             .unwrap();
+
+        Ok(())
 
         //let result = wasm_bindgen_futures::JsFuture::from(promise).await;
     }
