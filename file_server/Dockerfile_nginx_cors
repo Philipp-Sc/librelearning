@@ -1,0 +1,11 @@
+FROM nginx:alpine
+
+WORKDIR /etc/nginx
+COPY ./nginx.conf ./conf.d/default.conf
+COPY ./config/*.pem /etc/
+EXPOSE 443
+ENTRYPOINT [ "nginx" ]
+CMD [ "-g", "daemon off;" ]
+
+# docker build -t cors -f Dockerfile_nginx_cors .
+# nohup docker run --rm --name cors -p 443:443 cors > nginx.out &

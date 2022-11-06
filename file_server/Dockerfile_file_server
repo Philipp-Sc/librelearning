@@ -1,0 +1,15 @@
+FROM rust:latest
+
+WORKDIR /usr/workspace
+
+RUN git clone https://github.com/svenstaro/miniserve.git
+RUN cd miniserve;RUSTFLAGS="-C target-cpu=native" cargo install --locked --path .
+
+RUN mkdir ./public 
+CMD ["miniserve"]
+
+# sudo docker build -t miniserve -f Dockerfile_file_server .
+# --> replace username and password with your credentials. 
+# & nohoup docker run --rm -p 8080:8080 -v "$(pwd)/static":/usr/workspace/public miniserve miniserve --auth user_name:password --random-route ./public > miniserve.out &
+# cat miniserve.out
+# --> note the randomly generated route / path.
