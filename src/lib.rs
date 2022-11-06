@@ -1,10 +1,10 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
-mod audio;
-mod image;
+mod download;
 mod spaced_repetition;
 mod static_audio;
+mod static_fonts;
 mod windows;
 pub use app::LibreLearningApp;
 

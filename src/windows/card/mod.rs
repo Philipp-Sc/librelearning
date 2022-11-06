@@ -1,9 +1,23 @@
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct CardDisplay {}
+pub struct CardDisplay {
+    play_audio_requested: bool,
+}
+
+impl CardDisplay {
+    fn take_action(&mut self, card_display_data: &mut super::super::app::CardDisplayData) {
+        if self.play_audio_requested {
+            if card_display_data.play_audio() {
+                self.play_audio_requested = false;
+            }
+        }
+    }
+}
 
 impl Default for CardDisplay {
     fn default() -> Self {
-        Self {}
+        Self {
+            play_audio_requested: false,
+        }
     }
 }
 
@@ -13,6 +27,8 @@ impl super::CardView for CardDisplay {
         ui: &mut egui::Ui,
         card_display_data: &mut super::super::app::CardDisplayData,
     ) {
+        self.take_action(card_display_data);
+
         ui.allocate_space(egui::Vec2 { x: 0.0, y: 10.0 });
         ui.heading(egui::RichText::new(card_display_data.get_question()));
         ui.separator();
@@ -20,7 +36,7 @@ impl super::CardView for CardDisplay {
         ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
 
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-            let play_audio_text = if card_display_data.has_audio_item() {
+            let play_audio_text = if card_display_data.has_audio() {
                 "🔊"
             } else {
                 "🔇"
@@ -32,7 +48,7 @@ impl super::CardView for CardDisplay {
                 )
                 .clicked()
             {
-                card_display_data.play_audio_item();
+                self.play_audio_requested = true;
             }
 
             ui.label(
@@ -50,7 +66,6 @@ impl super::CardView for CardDisplay {
             } else {
                 ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
             }
-            // note this is likely not efficient
         });
     }
 }

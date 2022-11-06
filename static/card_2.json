@@ -1,0 +1,7 @@
+{ 
+    "question_text": "3Translate this sentence", 
+    "context_text": "Terima kasih, selamat idul fitri.",
+    "label_text": "Thank you, happy eid.",
+    "placeholder_text": "Type the English translation", 
+    "id": 2
+}

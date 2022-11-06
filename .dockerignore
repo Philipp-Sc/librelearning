@@ -1,0 +1,13 @@
+/target
+/dist
+Cargo.lock
+Cargo.toml
+/assets
+.github
+/src
+.gitignore
+check.sh
+defined-in-js.js
+index.html
+README.md
+Trunk.toml
