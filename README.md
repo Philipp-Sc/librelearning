@@ -23,6 +23,6 @@ Host your own material:
 7. Use [Lets Encrypt](https://eff-certbot.readthedocs.io/en/stable/install.html#alternative-1-docker) to generate SSL keys for your domain.
 8. Copy both of your keys into ```./config```. 
 9. ```nano nginx.conf``` make sure the keys are referenced correctly.
-10. ```docker build -t cors .```
+10. ```docker build -t cors -f Dockerfile_nginx_cors .```
 11. ```nohup docker run --rm --name cors -p 443:443 cors &```
 12. Make sure your firewall settings (only) opens port ```443```.
