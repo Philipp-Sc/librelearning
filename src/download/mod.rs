@@ -12,11 +12,14 @@ enum Download {
     Failed(ehttp::Result<ehttp::Response>, f64),
 }
 
+#[derive(Debug)]
 pub enum DownloadState {
+    Null,
     None,
     InProgress,
     Done,
-    Failed,
+    Failed(String),
+    ParseError,
 }
 
 use http_auth_basic::Credentials;
@@ -54,12 +57,54 @@ impl DownloadItem {
         } else {
             let download: &Download = &mutex.unwrap();
             match download {
-                Download::Failed(..) => DownloadState::Failed,
+                Download::Failed(response, _) => DownloadState::Failed(
+                    response
+                        .as_ref()
+                        .ok()
+                        .map(|x| x.status.to_string())
+                        .unwrap_or("Error".to_string()),
+                ),
                 Download::None => DownloadState::None,
                 Download::InProgress => DownloadState::InProgress,
                 Download::Done(_response) => DownloadState::Done,
             }
         }
+    }
+
+    pub fn try_fetch_download(
+        &mut self,
+        request_config: &RequestConfig,
+    ) -> Result<Vec<u8>, DownloadState> {
+        {
+            let mutex = self.download.lock();
+            if let Err(_) = &mutex {
+                return Err(DownloadState::None);
+            }
+            let download: &Download = &mutex.unwrap();
+            match download {
+                Download::Failed(response, _timestamp) => {
+                    return Err(DownloadState::Failed(
+                        response
+                            .as_ref()
+                            .ok()
+                            .map(|x| x.status.to_string())
+                            .unwrap_or("Error".to_string()),
+                    ));
+                }
+                Download::None => {}
+                Download::InProgress => {
+                    return Err(DownloadState::InProgress);
+                }
+                Download::Done(response) => {
+                    return Ok(response.bytes.clone());
+                }
+            };
+        }
+        if !request_config.is_initialized() {
+            return Err(DownloadState::Null);
+        }
+        self.download(request_config);
+        Err(DownloadState::None)
     }
 
     pub fn fetch_download(&mut self, request_config: &RequestConfig) -> Option<Vec<u8>> {
@@ -89,11 +134,18 @@ impl DownloadItem {
         None
     }
     fn download(&mut self, request_config: &RequestConfig) {
-        let credentials = Credentials::new(&request_config.user_name, &request_config.password);
-        let credentials = credentials.as_http_header();
+        let credentials;
+
+        let mut headers = Vec::new();
+        if request_config.user_name.len() > 0 && request_config.password.len() > 0 {
+            credentials = Credentials::new(&request_config.user_name, &request_config.password)
+                .as_http_header();
+
+            headers.push(("Authorization", credentials.as_str()));
+        }
 
         let request = ehttp::Request {
-            headers: ehttp::headers(&[("Authorization", &credentials)]),
+            headers: ehttp::headers(&headers[..]),
             ..ehttp::Request::get(&format!("{}/{}", &request_config.endpoint, &self.url))
         };
 

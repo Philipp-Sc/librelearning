@@ -1,8 +1,0 @@
-{ 
-    "question_text": "6Translate this sentence", 
-    "context_text": "Terima kasih, selamat idul fitri.",
-    "label_text": "Thank you, happy eid.",
-    "placeholder_text": "Type the English translation", 
-    "image_item": "images/DALL_E_Terima_kasih__Selamat_idul_fitri.png",
-    "id": 5 
-}

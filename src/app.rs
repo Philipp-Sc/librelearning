@@ -10,6 +10,7 @@ use js_sys::Date;
 use super::spaced_repetition::*;
 use std::collections::HashMap;
 
+use super::windows::alert::*;
 use super::windows::card::*;
 use super::windows::review::*;
 use super::windows::settings::*;
@@ -19,19 +20,18 @@ use std::ops::*;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-// show popup when
-// - card downloaded
-// - card download failed.
+use any_ascii::any_ascii;
 
-// fetch next card button
-// - color Green when enabled
-// - popup text when clicked and disabled. "Learn a little more. You need more percent points, to be able to add a new card."
+use crate::download::DownloadState;
 
-// set deck name, select deck in settings.
+// first card when no card has yet been fetched. create tutorial card.
 
-// format IL chinese card deck to right format.
+// format IL chinese card deck to right format. // use DALLE to generate PICTURES
 
-// TODO: configure TSL for server later.
+// error warning when auto fetching -> disable auto fetching
+
+// save app state and tag it, enable loading/switching saved app states, that way can use multiple different decks. (only meta data needs to be saved, saving card data is convinient)
+// possibly have random manager, to switch between the tags for learning.
 
 // then add telegram bot functionality.
 
@@ -63,11 +63,19 @@ impl CardDisplayData {
         // Terima kasih, selamat idul fitri. // Where are you from? // What is your name?
         self.context_text.to_owned()
     }
-    pub fn get_label(&self, ignore_punctuation_symbols: bool, match_case: bool) -> String {
+    pub fn get_label(
+        &self,
+        ignore_sentence_punctuation_symbols: bool,
+        match_ascii: bool,
+        match_case: bool,
+    ) -> String {
         // Thank you, happy eid. // Kamu dari mana? // Nama kamu apa?
         let mut label = self.label_text.to_owned();
-        if ignore_punctuation_symbols {
+        if ignore_sentence_punctuation_symbols {
             label = label.replace(&['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..], "");
+        }
+        if match_ascii {
+            label = any_ascii(&label);
         }
         if !match_case {
             label = label.to_lowercase();
@@ -161,6 +169,7 @@ pub struct RequestConfig {
 }
 impl RequestConfig {
     pub fn is_initialized(&self) -> bool {
+        // starts with http(s)://  and ends with no /
         if self.endpoint.len() == 0 {
             return false;
         }
@@ -190,10 +199,14 @@ pub struct LibreLearningApp {
     review_display: ReviewDisplay,
 
     #[serde(skip)]
+    alert_display: AlertDisplay,
+
+    #[serde(skip)]
     static_audio: StaticAudio,
 
     show_settings: bool,
     show_review: bool,
+    alert_text: Option<String>,
 
     check_review_done_requested: bool,
 
@@ -209,6 +222,9 @@ pub struct LibreLearningApp {
     card_download: Option<CardItem>,
 
     new_card_requested: bool,
+
+    #[serde(skip)]
+    play_sound: Option<StaticSounds>,
 }
 
 impl Default for LibreLearningApp {
@@ -217,9 +233,11 @@ impl Default for LibreLearningApp {
             settings_display: SettingsDisplay::default(),
             card_display: CardDisplay::default(),
             review_display: ReviewDisplay::default(),
+            alert_display: AlertDisplay::default(),
             static_audio: StaticAudio::new(),
             show_settings: false,
             show_review: false,
+            alert_text: None,
             check_review_done_requested: false,
             progress: 0.0,
             user_text_input: "".to_owned(),
@@ -228,17 +246,15 @@ impl Default for LibreLearningApp {
             card_list: vec![Card {
                 display_data: CardDisplayData {
                     request_config: None,
-                    question_text: "Translate this sentence".to_owned(),
-                    context_text: "Terima kasih, selamat idul fitri.".to_owned(),
-                    label_text: "Thank you, happy eid.".to_owned(),
-                    placeholder_text: "Type the English translation".to_owned(),
-                    audio_item: Some(AudioItem::new("audio/prompt.wav")),
-                    image_item: Some(ImageItem::new(
-                        "images/DALL_E_Terima_kasih__Selamat_idul_fitri.png",
-                    )),
+                    question_text: "For when you really just want to learn a new language right now!".to_owned(),
+                    context_text: "To get started open the ⚙ Settings and enter the connection details to your material.\n\n\nAfter that you can:\n\n- fetch new cards (🎉)\n\n- start reviewing your material (↩)".to_owned(),
+                    label_text: "".to_owned(),
+                    placeholder_text: "".to_owned(),
+                    audio_item: None,
+                    image_item: None,
                 },
                 meta_data: CardMetaData {
-                    id: 0,
+                    id: u16::MAX,
                     timestamps: Vec::new(),
                     scores: Vec::new(),
                 },
@@ -246,6 +262,7 @@ impl Default for LibreLearningApp {
             space_repetition_model: SpacedRepetition::default(),
             card_download: None::<CardItem>,
             new_card_requested: false,
+            play_sound: None,
         }
     }
 }
@@ -268,10 +285,11 @@ impl LibreLearningApp {
 
         super::is_ready();
 
+        let mut previous_instance: LibreLearningApp;
+
         // Load previous app state (if any).
         if let Some(storage) = cc.storage {
-            let mut previous_instance: LibreLearningApp =
-                eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            previous_instance = eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
             previous_instance.settings_display.set_request_config();
 
             // loaded cards get the current request_config, (freshly fetched cards also get this).
@@ -281,14 +299,23 @@ impl LibreLearningApp {
                     .set_request_config(&previous_instance.settings_display.request_config);
             }
             return previous_instance;
+        } else {
+            previous_instance = Default::default()
         }
-
-        Default::default()
+        previous_instance
     }
 
     fn take_action(&mut self) {
         if self.settings_display.reset_app_requested {
             *self = Default::default();
+        }
+        if let Some(static_sound) = &self.play_sound.clone() {
+            self.play_sound = None;
+            self.static_audio.play_audio(&static_sound).ok();
+        }
+        if self.card_list.len() == 2 && self.card_list[1].meta_data.id == u16::MAX {
+            // Deleting the inital demo card.
+            self.card_list.pop();
         }
 
         if self.handle_next_requested {
@@ -305,18 +332,37 @@ impl LibreLearningApp {
             }
         }
         if self.new_card_requested {
-            if self.try_add_new_card() {
-                self.new_card_requested = false;
-                self.check_review_done_requested = true;
+            match self.try_add_new_card() {
+                Ok(_) => {
+                    self.new_card_requested = false;
+                    self.play_sound = Some(StaticSounds::BeginningOfLine);
+                    self.handle_next_requested = true; // because new card is next.
+                }
+                Err(err) => {
+                    match err {
+                        DownloadState::Failed(..)
+                        | DownloadState::ParseError
+                        | DownloadState::Null => {
+                            self.new_card_requested = false;
+                            self.alert_text = Some(format!("{:?}", err));
+                            self.card_download = None;
+                        }
+                        _ => {} // InProgress
+                    }
+                }
             }
         }
     }
     fn evaluate_review(&mut self) -> bool {
         self.card_list[0].meta_data.timestamps.push(Date::now());
-        if self.settings_display.ignore_punctuation_symbols {
+        if self.settings_display.ignore_sentence_punctuation_symbols {
             self.user_text_input = self
                 .user_text_input
                 .replace(&['?', '(', ')', ',', '\"', '.', ';', ':', '\''][..], "");
+        }
+
+        if self.settings_display.match_ascii {
+            self.user_text_input = any_ascii(&self.user_text_input);
         }
         if !self.settings_display.match_case {
             self.user_text_input = self.user_text_input.to_lowercase();
@@ -324,7 +370,8 @@ impl LibreLearningApp {
         let score = edit_distance::edit_distance(
             &self.user_text_input,
             &self.card_list[0].display_data.get_label(
-                self.settings_display.ignore_punctuation_symbols,
+                self.settings_display.ignore_sentence_punctuation_symbols,
+                self.settings_display.match_ascii,
                 self.settings_display.match_case,
             ),
         ) <= self.settings_display.spelling_correction_threshold;
@@ -332,32 +379,46 @@ impl LibreLearningApp {
         score
     }
 
-    fn try_add_new_card(&mut self) -> bool {
-        let card_id: u16 = self.card_list.len() as u16;
-        if let Some(card) = self.fetch_card(card_id) {
-            self.card_list.push(card);
-            return true;
+    fn try_add_new_card(&mut self) -> Result<(), DownloadState> {
+        let card_id: u16 =
+            if self.card_list.len() == 1 && self.card_list[0].meta_data.id == u16::MAX {
+                // Deleting the inital demo card.
+                0u16
+            } else {
+                self.card_list.len() as u16
+            };
+
+        match self.fetch_card(card_id) {
+            Ok(card) => {
+                self.card_list.insert(0, card);
+                Ok(())
+            }
+            Err(err) => Err(err),
         }
-        false
     }
 
-    fn fetch_card(&mut self, card_id: u16) -> Option<Card> {
+    fn fetch_card(&mut self, card_id: u16) -> Result<Card, DownloadState> {
         if let Some(ref mut card_download) = &mut self.card_download {
             return match card_download.fetch_card(&self.settings_display.request_config) {
-                Some(c) => {
+                Ok(Some(c)) => {
                     self.card_download = None;
-                    Some(c)
+                    Ok(c)
                 }
-                None => None,
+                Err(err) => Err(err),
+                Ok(None) => Err(DownloadState::ParseError),
             };
         } else {
             let card_url = format!("card_{}.json", card_id);
             let mut card_download = CardItem::new(&card_url);
             return match card_download.fetch_card(&self.settings_display.request_config) {
-                Some(c) => Some(c),
-                None => {
+                Ok(Some(c)) => Ok(c),
+                Ok(None) => {
                     self.card_download = Some(card_download);
-                    None
+                    Err(DownloadState::ParseError)
+                }
+                Err(err) => {
+                    self.card_download = Some(card_download);
+                    Err(err)
                 }
             };
         }
@@ -447,6 +508,12 @@ impl LibreLearningApp {
 
         self.handle_next_requested = true;
 
+        if self.settings_display.featch_new_card_at_threshold
+            && self.progress * 100.0 >= self.settings_display.add_new_card_threshold
+        {
+            self.new_card_requested = true;
+        }
+
         //super::log(&format!("{:?}",(count_score_true,count_score_true+count_score_false,count_score_undefined)));
     }
 }
@@ -484,11 +551,13 @@ impl eframe::App for LibreLearningApp {
             if self.show_settings {
                 self.settings_display.show(ctx, &mut self.show_settings);
             } else {
+                self.alert_display.show(ctx, &mut self.alert_text);
                 self.review_display.show(
                     ctx,
                     &mut self.show_review,
                     &self.card_list[0].display_data.get_label(
-                        self.settings_display.ignore_punctuation_symbols,
+                        self.settings_display.ignore_sentence_punctuation_symbols,
+                        self.settings_display.match_ascii,
                         self.settings_display.match_case,
                     ),
                     &self.user_text_input,
@@ -534,7 +603,15 @@ impl eframe::App for LibreLearningApp {
 
                 if self.settings_display.show_fetch_new_card_button {
                     ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT), |ui| {
-                        let check = ui.add(egui::Button::new(egui::RichText::new("🎉").size(40.0)));
+                        let check = ui.add(
+                            egui::Button::new(egui::RichText::new("🎉").size(40.0)).fill(
+                                egui::Color32::from_rgb(
+                                    (255.0 - (255.0 * self.progress)) as u8,
+                                    (255.0 * self.progress) as u8,
+                                    (255.0 * 0.9) as u8,
+                                ),
+                            ),
+                        );
                         if check.clicked() {
                             self.new_card_requested = true;
                         }
@@ -549,13 +626,9 @@ impl eframe::App for LibreLearningApp {
                             let score = self.evaluate_review();
                             if self.settings_display.enable_sounds {
                                 if score {
-                                    self.static_audio
-                                        .play_audio(&StaticSounds::BeginningOfLine)
-                                        .ok();
+                                    self.play_sound = Some(StaticSounds::BeginningOfLine);
                                 } else {
-                                    self.static_audio
-                                        .play_audio(&StaticSounds::ServiceLogout)
-                                        .ok();
+                                    self.play_sound = Some(StaticSounds::ServiceLogout);
                                 }
                             }
 
@@ -566,5 +639,10 @@ impl eframe::App for LibreLearningApp {
                 );
             }
         });
+        // to save CPU ressources egui does not always automaically update the UI
+        // the following line ensures egui updates the UI at least every 250ms (human reaction time).
+        ctx.request_repaint_after(std::time::Duration::from_millis(250));
+        // TODO: this can be optimized by checking if there are any background tasks (e.g. Downloads InProgress)
+        // if no the duration can be longer
     }
 }

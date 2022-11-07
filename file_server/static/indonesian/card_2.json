@@ -1,0 +1,7 @@
+{ 
+    "question_text": "Complete the translation", 
+    "context_text": "Sweet soy sauce, sugar, and salt.\n__________ manis, gula dan garam.",
+    "label_text": "Kecap",
+    "placeholder_text": "Type the missing word", 
+    "id": 2
+}

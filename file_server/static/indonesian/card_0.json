@@ -1,5 +1,5 @@
 { 
-    "question_text": "1Translate this sentence", 
+    "question_text": "Translate this sentence", 
     "context_text": "Terima kasih, selamat idul fitri.",
     "label_text": "Thank you, happy eid.",
     "placeholder_text": "Type the English translation", 

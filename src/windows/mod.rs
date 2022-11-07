@@ -1,3 +1,4 @@
+pub mod alert;
 pub mod card;
 pub mod review;
 pub mod settings;
@@ -23,6 +24,15 @@ pub trait ReviewWindow {
 
     /// Show windows, etc
     fn show(&mut self, ctx: &egui::Context, open: &mut bool, label: &str, text: &str, score: &bool);
+}
+
+/// Something to view
+pub trait AlertWindow {
+    /// `&'static` so we can also use it as a key to store open/close state.
+    fn name(&self) -> &'static str;
+
+    /// Show windows, etc
+    fn show(&mut self, ctx: &egui::Context, text: &mut Option<String>);
 }
 
 /// Something to view in a window

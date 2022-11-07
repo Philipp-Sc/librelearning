@@ -1,8 +1,0 @@
-{ 
-    "question_text": "2Translate this sentence", 
-    "context_text": "Terima kasih, selamat idul fitri.",
-    "label_text": "Thank you, happy eid.",
-    "placeholder_text": "Type the English translation",
-    "audio_item": "audio/prompt.wav", 
-    "id": 1
-}

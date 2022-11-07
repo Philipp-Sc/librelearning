@@ -16,7 +16,8 @@ pub struct SettingsDisplay {
     pub show_fetch_new_card_button: bool,
     pub add_new_card_threshold: f32,
     pub spelling_correction_threshold: usize,
-    pub ignore_punctuation_symbols: bool,
+    pub ignore_sentence_punctuation_symbols: bool,
+    pub match_ascii: bool,
     pub match_case: bool,
 
     pub my_endpoint: String,
@@ -50,7 +51,8 @@ impl Default for SettingsDisplay {
             show_fetch_new_card_button: true,
             add_new_card_threshold: 66.6,
             spelling_correction_threshold: 1,
-            ignore_punctuation_symbols: true,
+            ignore_sentence_punctuation_symbols: true,
+            match_ascii: false,
             match_case: false,
             reset_app_requested: false,
             my_endpoint: "".to_string(),
@@ -127,8 +129,10 @@ impl super::View for SettingsDisplay {
                                 .map(|x| x.get_download_state())
                             {
                                 Some(DownloadState::Done) => egui::Color32::GREEN,
+                                Some(DownloadState::ParseError) => egui::Color32::GREEN,
                                 Some(DownloadState::InProgress) => egui::Color32::YELLOW,
-                                Some(DownloadState::Failed) => egui::Color32::RED,
+                                Some(DownloadState::Failed(..)) => egui::Color32::RED,
+                                Some(DownloadState::Null) => egui::Color32::RED,
                                 None | Some(DownloadState::None) => egui::Color32::GRAY,
                             },
                         ),
@@ -172,9 +176,15 @@ impl super::View for SettingsDisplay {
                 );
 
                 ui.checkbox(
-                    &mut self.ignore_punctuation_symbols,
-                    egui::RichText::new("Ignore punctuation symbols").size(16.0),
+                    &mut self.ignore_sentence_punctuation_symbols,
+                    egui::RichText::new("Ignore sentence punctuation symbols").size(16.0),
                 );
+
+                ui.checkbox(
+                    &mut self.match_ascii,
+                    egui::RichText::new("Match ASCII").size(16.0),
+                );
+
                 ui.checkbox(
                     &mut self.match_case,
                     egui::RichText::new("Match case (Lowercase/Uppercase)").size(16.0),

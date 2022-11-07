@@ -24,23 +24,26 @@ impl CardItem {
         }
     }
 
-    pub fn fetch_card(&mut self, request_config: &Arc<RwLock<RequestConfig>>) -> Option<Card> {
+    pub fn fetch_card(
+        &mut self,
+        request_config: &Arc<RwLock<RequestConfig>>,
+    ) -> Result<Option<Card>, super::DownloadState> {
         match if let Ok(conf) = request_config.read() {
-            self.download_item.fetch_download(&conf)
+            self.download_item.try_fetch_download(&conf)
         } else {
-            None
+            Err(super::DownloadState::None)
         } {
-            None => None,
-            Some(vec) => {
+            Err(err) => Err(err),
+            Ok(vec) => {
                 match std::str::from_utf8(&vec[..]) {
                     Ok(v) => {
                         let mut card = Card::parse(v);
                         if let Some(ref mut c) = card {
                             c.display_data.set_request_config(request_config);
                         }
-                        card
+                        Ok(card)
                     }
-                    Err(_e) => None, //  panic!("Invalid UTF-8 sequence: {}", e),
+                    Err(_e) => Ok(None), //  panic!("Invalid UTF-8 sequence: {}", e),
                 }
             }
         }

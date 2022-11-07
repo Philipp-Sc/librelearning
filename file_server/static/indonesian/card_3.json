@@ -1,0 +1,7 @@
+{ 
+    "question_text": "Translate this sentence", 
+    "context_text": "Mereka mau es teh.",
+    "label_text": "They want iced tea.",
+    "placeholder_text": "Type the English translation", 
+    "id": 3
+}

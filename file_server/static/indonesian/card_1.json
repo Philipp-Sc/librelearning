@@ -1,0 +1,7 @@
+{ 
+    "question_text": "Type the missing word", 
+    "context_text": "Berapa _________ sarapan ini?",
+    "label_text": "harga",
+    "placeholder_text": "Type the missing word", 
+    "id": 1
+}

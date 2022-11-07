@@ -30,7 +30,11 @@ impl super::CardView for CardDisplay {
         self.take_action(card_display_data);
 
         ui.allocate_space(egui::Vec2 { x: 0.0, y: 10.0 });
-        ui.heading(egui::RichText::new(card_display_data.get_question()));
+
+        ui.add(
+            egui::Label::new(egui::RichText::new(card_display_data.get_question()).heading())
+                .wrap(true),
+        );
         ui.separator();
 
         ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
@@ -51,10 +55,13 @@ impl super::CardView for CardDisplay {
                 self.play_audio_requested = true;
             }
 
-            ui.label(
-                egui::RichText::new(card_display_data.get_context())
-                    .color(egui::Color32::WHITE)
-                    .size(20.0),
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(card_display_data.get_context())
+                        .color(egui::Color32::WHITE)
+                        .size(20.0),
+                )
+                .wrap(true),
             );
         });
 

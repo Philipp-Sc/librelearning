@@ -1,0 +1,7 @@
+{ 
+    "question_text": "Translate this sentence", 
+    "context_text": "Es teh",
+    "label_text": "Iced tea",
+    "placeholder_text": "Type the English translation",  
+    "id": 5 
+}

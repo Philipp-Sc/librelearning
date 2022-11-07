@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+#[derive(Clone)]
 pub enum StaticSounds {
     //DialogWarning,
     BeginningOfLine,
