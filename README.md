@@ -12,6 +12,23 @@
 
 Host your own material:
 
+You can setup your own file server or just use GitHub.
+
+# Github
+
+This repository includes a simple example.
+
+- [/file_server/static/indonesian](https://github.com/Philipp-Sc/librelearning/tree/main/file_server/static/indonesian)
+
+Enter the following URL as connection endpoint via the ⚙ Setting:
+
+- https://raw.githubusercontent.com/Philipp-Sc/librelearning/main/file_server/static/indonesian
+
+Done, congrats you can now use your own material. 🎉
+
+
+# Custom File Server
+
 - Requirements: a Linux Server with Domain (e.g. www.your-domain.com) + [Docker installed](https://docs.docker.com/engine/install).
 
 1. ```cd file_server```
