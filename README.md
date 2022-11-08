@@ -2,11 +2,17 @@
 
 **For when you really just want to learn a new language right now!**
 
+
+
 # Features
 
-- [x] Use your own material (Custom File Server or GitHub)
 - [x] Spaced Repetition (implemented with [ebisu.js](https://github.com/fasiha/ebisu.js))
+- [x] Use your own material (Custom File Server or GitHub)
 
+User generated content:
+- [ ] DALL-E Image Generation
+- [ ] Whisper Transcription
+- [ ] Text-To-Speech
 
 # Frontend 
 
