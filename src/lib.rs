@@ -1,11 +1,7 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
-mod app;
-mod download;
-mod spaced_repetition;
-mod static_audio;
-mod static_fonts;
-mod windows;
+mod app; 
+mod app_controller;
 pub use app::LibreLearningApp;
 
 use wasm_bindgen::prelude::*;
