@@ -156,14 +156,14 @@ impl ModelController {
                             DownloadState::Failed(..)
                             | DownloadState::ParseError
                             | DownloadState::Null => {
-
-                                view_model
-                                .insert_property(PropertieKey::Alert, PropertieValue::String(format!("{:?}", err))); 
+                                view_model.insert_property(
+                                    PropertieKey::Alert,
+                                    PropertieValue::String(format!("{:?}", err)),
+                                );
 
                                 self.app_data.card_download = None;
 
                                 retained_controller_requests.insert(ControllerRequest::RefreshCard);
-
                             }
                             _ => {
                                 retained_controller_requests
@@ -173,7 +173,7 @@ impl ModelController {
                     }
                 }
                 ControllerRequest::CheckReview => {
-                    if self.app_data.card_list.len()==0{
+                    if self.app_data.card_list.len() == 0 {
                         return;
                     }
 
@@ -269,7 +269,7 @@ impl ModelController {
                         .insert(ControllerRequest::FetchNewCardAtThresholdOrContinue);
                 }
                 ControllerRequest::UpdateCardList => {
-                    if self.app_data.card_list.len()==0{
+                    if self.app_data.card_list.len() == 0 {
                         return;
                     }
 
@@ -278,7 +278,6 @@ impl ModelController {
                             user_text_input.clear();
                         }
                     });
-                   
 
                     let mut list: HashMap<u16, u64> = HashMap::new();
                     let mut count_score_true: usize = 0;
@@ -377,7 +376,6 @@ impl ModelController {
                         .insert_property(PropertieKey::Progress, PropertieValue::Float(progress));
                 }
                 ControllerRequest::FetchNewCardAtThresholdOrContinue => {
-
                     let mut progress = 0.0;
 
                     view_model.get_property(&PropertieKey::Progress, |val| {
@@ -421,7 +419,7 @@ impl ModelController {
                     }
                 }
                 ControllerRequest::LoadImage => {
-                    if self.app_data.card_list.len()==0{
+                    if self.app_data.card_list.len() == 0 {
                         return;
                     }
 

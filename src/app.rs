@@ -1,6 +1,5 @@
-  
-use crate::app_controller::AppController;
 use crate::app_controller::model_controller::data_model::static_fonts::setup_custom_fonts;
+use crate::app_controller::AppController;
 
 // LOAD/SAVE/DELETE State. Enables Switching Decks, without losing everything.
 
@@ -25,7 +24,6 @@ use crate::app_controller::model_controller::data_model::static_fonts::setup_cus
 // Tell librelearning what you want to learn and it will prepare the material for you. Only learn what you need, when you need it.
 //
 // Whisper -> Transcribe -> GPT-3 -> Generate Card -> DALL-E -> Generate Image -> Text-To-Speech -> Generate Audio.
- 
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -70,7 +68,7 @@ impl LibreLearningApp {
             previous_instance = Default::default()
         }
         previous_instance
-    } 
+    }
 }
 
 impl eframe::App for LibreLearningApp {

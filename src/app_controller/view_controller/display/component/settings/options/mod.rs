@@ -6,8 +6,6 @@ use crate::app_controller::view_controller::view_model_controller::view_model::{
 };
 use crate::app_controller::ViewModel;
 
- 
-
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct OptionsSettingsDisplay {}
 
