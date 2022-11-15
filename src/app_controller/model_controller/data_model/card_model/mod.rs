@@ -9,10 +9,7 @@ use egui_extras::RetainedImage;
 use std::sync::Mutex;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
-pub struct CardDisplayData {
-    #[serde(skip)]
-    // RequestConfig can be saved, but the shared reference to the original RequestConfig can not be saved. (Therefore to be restored at startup.)
-    pub request_config: Option<Arc<RwLock<RequestConfig>>>,
+pub struct CardDisplayData { 
 
     pub question_text: String,
     pub context_text: String,
@@ -25,12 +22,7 @@ pub struct CardDisplayData {
     pub image_index: usize,
 }
 
-impl CardDisplayData {
-    pub fn set_request_config(&mut self, request_config: &Arc<RwLock<RequestConfig>>) {
-        if self.request_config.is_none() {
-            self.request_config = Some(request_config.clone());
-        }
-    }
+impl CardDisplayData { 
 
     pub fn get_question(&self) -> String {
         // Translate this sentence // What is the next word? // Pronounce this sentence
@@ -75,38 +67,44 @@ impl CardDisplayData {
         }
     }*/
 
+    pub fn add_image_from_url(&mut self,url: &str) {
+        let image = ImageItem::new(url);
+        if let Some(ref mut image_item) = self.image_item {
+            image_item.push(image);
+            self.image_index = image_item.len()-1;
+        }else{
+            self.image_item = Some(vec![image]);
+            self.image_index = 0;
+        }
+
+    }
+
     pub fn has_image(&mut self) -> bool {
         self.image_item.is_some()
     }
 
-    pub fn get_image(&mut self) -> Option<Arc<Mutex<RetainedImage>>> {
-        if let Some(ref mut image_item) = &mut self.image_item {
-            if let Some(ref request_config) = self.request_config {
-                if let Ok(conf) = request_config.read() {
-                    return image_item[self.image_index].get_image(&conf);
-                }
-            }
+    pub fn get_image(&mut self, request_config: Arc<RwLock<RequestConfig>>) -> Option<Arc<Mutex<RetainedImage>>> {
+        if let Some(ref mut image_item) = &mut self.image_item { 
+            if let Ok(conf) = request_config.read() {
+                return image_item[self.image_index].get_image(&conf);
+            } 
         }
         None
     }
 
-    pub fn play_audio(&mut self) -> bool {
-        if let Some(audio_item) = &mut self.audio_item {
-            if let Some(ref request_config) = self.request_config {
-                if let Ok(conf) = request_config.read() {
-                    return audio_item.play(&conf);
-                }
-            }
+    pub fn play_audio(&mut self, request_config: Arc<RwLock<RequestConfig>>) -> bool {
+        if let Some(audio_item) = &mut self.audio_item { 
+            if let Ok(conf) = request_config.read() {
+                return audio_item.play(&conf);
+            } 
         }
         false
     }
-    pub fn load_audio(&mut self) {
-        if let Some(audio_item) = &mut self.audio_item {
-            if let Some(ref request_config) = self.request_config {
-                if let Ok(conf) = request_config.read() {
-                    audio_item.load(&conf);
-                }
-            }
+    pub fn load_audio(&mut self, request_config: Arc<RwLock<RequestConfig>>) {
+        if let Some(audio_item) = &mut self.audio_item { 
+            if let Ok(conf) = request_config.read() {
+                audio_item.load(&conf);
+            } 
         }
     }
     pub fn has_audio(&self) -> bool {
@@ -143,8 +141,7 @@ impl Card {
         match serde_json::from_str::<CardFile>(json_str) {
             Err(_) => None,
             Ok(v) => Some(Self {
-                display_data: CardDisplayData {
-                    request_config: None,
+                display_data: CardDisplayData { 
                     question_text: v.question_text,
                     context_text: v.context_text,
                     label_text: v.label_text,

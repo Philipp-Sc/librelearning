@@ -67,6 +67,8 @@ impl DisplayViewModel for APISettingsDisplay {
                     if show_fetch_new_card_button {
                         ui.separator();
 
+                        let mut responses = Vec::new();
+
                         if let Some(PropertieValue::String(ref mut custom_server_endpoint)) = inner
                             .properties
                             .get_mut(&PropertieKey::CustomServerEndpoint)
@@ -75,11 +77,7 @@ impl DisplayViewModel for APISettingsDisplay {
                                 egui::TextEdit::singleline(custom_server_endpoint)
                                     .hint_text(egui::RichText::new("Enter your HTTP endpoint")),
                             );
-                            if response.changed() {
-                                inner
-                                    .controller_requests
-                                    .insert(ControllerRequest::UpdateRequestConfig);
-                            }
+                            responses.push(response); 
                         }
 
                         if let Some(PropertieValue::String(ref mut custom_server_username)) = inner
@@ -91,11 +89,7 @@ impl DisplayViewModel for APISettingsDisplay {
                                     egui::RichText::new("Enter your user name (optional)"),
                                 ),
                             );
-                            if response.changed() {
-                                inner
-                                    .controller_requests
-                                    .insert(ControllerRequest::UpdateRequestConfig);
-                            }
+                            responses.push(response); 
                         }
 
                         if let Some(PropertieValue::String(ref mut custom_server_password)) = inner
@@ -109,10 +103,14 @@ impl DisplayViewModel for APISettingsDisplay {
                                         "Enter your password (optional)",
                                     )),
                             );
+                            responses.push(response);
+                        }
+                        for response in responses {
                             if response.changed() {
                                 inner
                                     .controller_requests
                                     .insert(ControllerRequest::UpdateRequestConfig);
+                                break;
                             }
                         }
                     }
@@ -221,32 +219,48 @@ impl DisplayViewModel for APISettingsDisplay {
                     if connect_to_ai_server {
                         ui.separator();
 
+
+                        let mut responses = Vec::new();
+
                         if let Some(PropertieValue::String(ref mut ai_server_endpoint)) =
                             inner.properties.get_mut(&PropertieKey::AIServerEndpoint)
                         {
-                            let response1 = ui.add(
+                            let response = ui.add(
                                 egui::TextEdit::singleline(ai_server_endpoint)
                                     .hint_text(egui::RichText::new("Enter AI HTTP endpoint")),
                             );
+
+                            responses.push(response);
                         }
 
                         if let Some(PropertieValue::String(ref mut ai_server_username)) =
                             inner.properties.get_mut(&PropertieKey::AIServerUsername)
                         {
-                            let response2 = ui.add(
+                            let response = ui.add(
                                 egui::TextEdit::singleline(ai_server_username)
                                     .hint_text(egui::RichText::new("Enter your user name")),
                             );
+                            responses.push(response);
                         }
 
                         if let Some(PropertieValue::String(ref mut ai_server_password)) =
                             inner.properties.get_mut(&PropertieKey::AIServerPassword)
                         {
-                            let response3 = ui.add(
+                            let response = ui.add(
                                 egui::TextEdit::singleline(ai_server_password)
                                     .password(true)
                                     .hint_text(egui::RichText::new("Enter your password")),
                             );
+                            responses.push(response);
+                        }
+
+                        for response in responses {
+                            if response.changed() {
+                                inner
+                                    .controller_requests
+                                    .insert(ControllerRequest::UpdateAIRequestConfig);
+                                break;
+                            }
                         }
                     }
                 },
@@ -256,20 +270,35 @@ impl DisplayViewModel for APISettingsDisplay {
                 egui::Layout::top_down(egui::Align::Center).with_cross_justify(true),
                 |ui| {
                     if connect_to_ai_server {
-                        if ui
-                            .add(egui::Button::new(
-                                egui::RichText::new("Test connection")
-                                    .size(16.0)
-                                    .color(egui::Color32::BLACK),
-                            ))
-                            .clicked()
+                        if let Some(PropertieValue::DownloadState(ref state)) = inner
+                            .properties
+                            .get(&PropertieKey::AIServerConnectionStatus)
                         {
-                            inner
-                                .controller_requests
-                                .insert(ControllerRequest::TestAIServerConnection);
-                        }
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        egui::RichText::new("Test connection")
+                                            .size(16.0)
+                                            .color(egui::Color32::BLACK),
+                                    )
+                                    .fill(match state {
+                                        DownloadState::Done => egui::Color32::GREEN,
+                                        DownloadState::ParseError => egui::Color32::GREEN,
+                                        DownloadState::InProgress => egui::Color32::YELLOW,
+                                        DownloadState::Failed(..) => egui::Color32::RED,
+                                        DownloadState::Null => egui::Color32::RED,
+                                        DownloadState::None => egui::Color32::GRAY,
+                                    }),
+                                )
+                                .clicked()
+                            {
+                                inner
+                                    .controller_requests
+                                    .insert(ControllerRequest::TestAIServerConnection(true));
+                            }
 
-                        ui.separator();
+                            ui.separator();
+                        }
                     }
                 },
             );

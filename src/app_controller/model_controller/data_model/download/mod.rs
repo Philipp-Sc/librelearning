@@ -31,7 +31,7 @@ use http_auth_basic::Credentials;
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct DownloadItem {
-    url: String,
+    pub url: String,
     #[serde(skip)]
     #[derivative(Debug = "ignore")]
     download: Arc<Mutex<Download>>,
@@ -144,9 +144,16 @@ impl DownloadItem {
             headers.push(("Authorization", credentials.as_str()));
         }
 
+        let mut url = "".to_string();
+        url.push_str(&request_config.endpoint);
+        if request_config.endpoint.chars().last() != Some('/') {
+            url.push_str("/");
+        }
+        url.push_str(&self.url);
+
         let request = ehttp::Request {
             headers: ehttp::headers(&headers[..]),
-            ..ehttp::Request::get(&format!("{}/{}", &request_config.endpoint, &self.url))
+            ..ehttp::Request::get(&url)
         };
 
         let download_store = self.download.clone();

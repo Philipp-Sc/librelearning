@@ -10,12 +10,13 @@ use std::sync::{Arc, Mutex, RwLock};
 #[derive(Eq, Hash, PartialEq, Clone)]
 pub enum ControllerRequest {
     ResetApp,
-    Save,
-    Load,
-    Delete,
+    SaveCheckpoint,
+    LoadCheckpoint,
+    DeleteCheckpoint,
     UpdateRequestConfig,
+    UpdateAIRequestConfig,
     TestCustomServerConnection(bool),
-    TestAIServerConnection,
+    TestAIServerConnection(bool),
     FetchNewCard,
     CheckReview,
     HideAlert,
@@ -27,6 +28,7 @@ pub enum ControllerRequest {
     UpdateCardList,
     FetchNewCardAtThresholdOrContinue,
     RefreshCard,
+    RefreshRequestConfig,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -59,15 +61,16 @@ pub enum PropertieKey {
     CustomServerEndpoint,
     CustomServerUsername,
     CustomServerPassword,
+    CustomServerConnectionStatus,
     Progress,
     UserTextInput,
     UserTextInputHint,
     Checkpoints,
     SelectedCheckpoint,
-    CustomServerConnectionStatus,
     AIServerEndpoint,
     AIServerUsername,
     AIServerPassword,
+    AIServerConnectionStatus,
     CardQuestion,
     CardContext,
     CardHasAudio,
@@ -170,20 +173,16 @@ impl Default for InnerViewModel {
                     PropertieValue::String("".to_string()),
                 ),
                 (PropertieKey::UserTextInputHint,
-                PropertieValue::String("Type here..".to_string()),
+                PropertieValue::String("".to_string()),
                 ),
                 (
                     PropertieKey::Checkpoints,
-                    PropertieValue::VecString(vec![
-                        "http://127.0.0.1:8081/80331a/ntnu".to_string(),
-                        "http://127.0.0.1:8081/80331a/spoonfed".to_string(),
-                        "http://127.0.0.1:8081/80331a/custom".to_string(),
-                    ]),
+                    PropertieValue::VecString(Vec::new()),
                 ),
-                (
+                /*(
                     PropertieKey::SelectedCheckpoint,
                     PropertieValue::String("http://127.0.0.1:8081/80331a/ntnu".to_string()),
-                ),
+                ),*/
                 (
                     PropertieKey::CustomServerConnectionStatus,
                     PropertieValue::DownloadState(DownloadState::None),
@@ -201,12 +200,16 @@ impl Default for InnerViewModel {
                     PropertieValue::String("".to_string()),
                 ),
                 (
+                    PropertieKey::AIServerConnectionStatus,
+                    PropertieValue::DownloadState(DownloadState::None),
+                ),
+                (
                     PropertieKey::CardQuestion,
-                    PropertieValue::String("Libre Learning is for when you want to learn on the fly, right now.".to_string()),
+                    PropertieValue::String("For when you just want to learn and memorize.".to_string()),
                 ),
                 (
                     PropertieKey::CardContext,
-                    PropertieValue::String("Context aware language learning,\nmeant for learning abroad.\n\nTell the App what you want to learn and it will prepare the material for you. \nOnly learn what you need, when you need it.\n\nhttps://github.com/philipp-sc/librelearning".to_string()),
+                    PropertieValue::String("Learn what you need, when you need it.".to_string()),
                 ),
                 (
                     PropertieKey::CardHasAudio,
@@ -245,6 +248,17 @@ impl ViewModel {
     {
         if let Ok(mut inner) = self.inner.lock() {
             if let Some(ref mut val) = inner.properties.get_mut(key) {
+                f(val)
+            }
+        }
+    }
+
+    pub fn update_volatile_property<F>(&self, key: &VolatilePropertieKey, mut f: F)
+    where
+        F: FnMut(&mut VolatilePropertieValue),
+    {
+        if let Ok(mut inner) = self.inner.lock() {
+            if let Some(ref mut val) = inner.volatile_properties.get_mut(key) {
                 f(val)
             }
         }

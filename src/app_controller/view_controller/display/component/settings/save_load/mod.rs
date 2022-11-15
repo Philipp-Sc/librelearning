@@ -40,9 +40,25 @@ impl WindowViewModel for SaveLoadSettingsDisplay {
 
 impl DisplayViewModel for SaveLoadSettingsDisplay {
     fn ui(&mut self, ui: &mut egui::Ui, view_model: &ViewModel) {
+
+
+        ui.with_layout(
+            egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
+            |ui| {
+
+                ui.label(
+                    egui::RichText::new("Checkpoints:") 
+                        .strong() 
+                        .size(16.0),
+                );
+
+                ui.separator();
+
+            });
         ui.with_layout(
             egui::Layout::top_down(egui::Align::Center).with_cross_justify(true),
             |ui| {
+
                 if ui
                     .add(egui::Button::new(
                         egui::RichText::new("Save").size(16.0), //.color(egui::Color32::BLACK),
@@ -50,7 +66,7 @@ impl DisplayViewModel for SaveLoadSettingsDisplay {
                     .clicked()
                 {
                     if let Ok(mut inner) = view_model.inner.lock() {
-                        inner.controller_requests.insert(ControllerRequest::Save);
+                        inner.controller_requests.insert(ControllerRequest::SaveCheckpoint);
                     }
                 }
                 ui.separator();
@@ -60,24 +76,23 @@ impl DisplayViewModel for SaveLoadSettingsDisplay {
         ui.with_layout(
             egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
             |ui| {
-                if let Ok(mut inner) = view_model.inner.lock() {
                     let mut checkpoints_copy = None;
 
-                    if let Some(PropertieValue::VecString(ref checkpoints)) =
-                        inner.properties.get(&PropertieKey::Checkpoints)
-                    {
-                        checkpoints_copy = Some(checkpoints.clone());
-                    }
-                    if let Some(checkpoints) = checkpoints_copy {
-                        if let Some(PropertieValue::String(ref mut selected_checkpoint)) =
-                            inner.properties.get_mut(&PropertieKey::SelectedCheckpoint)
-                        {
-                            for title in checkpoints {
-                                ui.radio_value(selected_checkpoint, title.to_owned(), &*title);
-                            }
+                    view_model.get_property(&PropertieKey::Checkpoints, |val| {
+                        if let PropertieValue::VecString(ref checkpoints) = val {
+                            checkpoints_copy = Some(checkpoints.clone());
                         }
+                    });
+
+                    if let Some(checkpoints) = checkpoints_copy {
+                        view_model.update_property(&PropertieKey::SelectedCheckpoint, |val| {
+                            if let PropertieValue::String(ref mut selected_checkpoint) = val {
+                                for title in &checkpoints {
+                                    ui.radio_value(selected_checkpoint, title.to_owned(), &*title);
+                                }
+                            }
+                        });
                     }
-                }
             },
         );
         ui.with_layout(
@@ -91,7 +106,7 @@ impl DisplayViewModel for SaveLoadSettingsDisplay {
                     .clicked()
                 {
                     if let Ok(mut inner) = view_model.inner.lock() {
-                        inner.controller_requests.insert(ControllerRequest::Load);
+                        inner.controller_requests.insert(ControllerRequest::LoadCheckpoint);
                     }
                 }
                 if ui
@@ -101,9 +116,56 @@ impl DisplayViewModel for SaveLoadSettingsDisplay {
                     .clicked()
                 {
                     if let Ok(mut inner) = view_model.inner.lock() {
-                        inner.controller_requests.insert(ControllerRequest::Delete);
+                        inner.controller_requests.insert(ControllerRequest::DeleteCheckpoint);
                     }
                 }
+
+                ui.separator();
+
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new("Import").size(16.0), //.color(egui::Color32::BLACK),
+                    ))
+                    .clicked()
+                {
+                    if let Ok(mut inner) = view_model.inner.lock() { 
+                    }
+                }
+
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new("Export").size(16.0), //.color(egui::Color32::BLACK),
+                    ))
+                    .clicked()
+                {
+                    if let Ok(mut inner) = view_model.inner.lock() { 
+                    }
+                }
+
+
+                ui.separator();
+               
+                
+            },
+        );
+        ui.with_layout(
+            egui::Layout::top_down(egui::Align::LEFT).with_cross_justify(true),
+            |ui| {
+
+                ui.label(
+                    egui::RichText::new("Danger Zone:") 
+                        .strong() 
+                        .size(16.0),
+                );
+
+                ui.separator();
+
+            });
+
+
+        ui.with_layout(
+            egui::Layout::top_down(egui::Align::Center).with_cross_justify(true),
+            |ui| {
                 if ui
                     .add(egui::Button::new(
                         egui::RichText::new("Reset App").size(16.0), //.color(egui::Color32::BLACK),
@@ -116,7 +178,6 @@ impl DisplayViewModel for SaveLoadSettingsDisplay {
                             .insert(ControllerRequest::ResetApp);
                     }
                 }
-            },
-        );
+            });
     }
 }

@@ -21,20 +21,20 @@ use std::collections::HashMap;
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct ModelController {
     app_data: AppData,
+
+    checkpoints: HashMap<String,String>,
 }
 impl ModelController {
     pub fn restore(&mut self, view_model: &ViewModel) {
-        // loaded cards get the current request_config, (freshly fetched cards also get this).
-        for i in 0..self.app_data.card_list.len() {
-            self.app_data.card_list[i]
-                .display_data
-                .set_request_config(&self.app_data.request_config);
-        }
 
         let mut retained_controller_requests = HashSet::new();
 
-        retained_controller_requests.insert(ControllerRequest::LoadAudio);
-        retained_controller_requests.insert(ControllerRequest::LoadImage);
+        retained_controller_requests.insert(ControllerRequest::RefreshCard); 
+        retained_controller_requests.insert(ControllerRequest::RefreshRequestConfig); // other settings are not synchronized (!).
+
+        if self.checkpoints.is_empty() {
+            retained_controller_requests.insert(ControllerRequest::SaveCheckpoint); // default checkpoint.
+        }
 
         if let Ok(mut inner) = view_model.inner.lock() {
             inner
@@ -46,25 +46,95 @@ impl ModelController {
         let mut controller_requests = HashSet::new();
         if let Ok(mut inner) = view_model.inner.lock() {
             controller_requests = inner.controller_requests.drain().collect();
-        }
-        if controller_requests.contains(&ControllerRequest::ResetApp) {
-            if let Ok(mut inner) = view_model.inner.lock() {
-                *inner = Default::default();
-            }
-            *self = Default::default();
-            return;
-        }
-
+        } 
         let mut retained_controller_requests = HashSet::new();
 
         for request in controller_requests {
             match request {
                 ControllerRequest::ResetApp => {
-                    panic!()
+                    if let Ok(mut inner) = view_model.inner.lock() {
+                        *inner = Default::default();
+                    }
+                    *self = Default::default();
+                    return;
                 }
-                ControllerRequest::Save => {}
-                ControllerRequest::Load => {}
-                ControllerRequest::Delete => {}
+                ControllerRequest::SaveCheckpoint => { 
+                    use wasm_bindgen::JsCast; 
+
+                    if let Some(new_checkpoint) = Date::new_0().to_utc_string().as_string() {
+
+                        self.checkpoints.insert(new_checkpoint.to_owned(),serde_json::json!(&self.app_data).to_string());
+                        view_model.update_property(&PropertieKey::Checkpoints, |val| {
+                            if let PropertieValue::VecString(ref mut checkpoints) = val {
+                                checkpoints.push(new_checkpoint.to_owned());
+                            }
+                        });
+
+                        view_model.insert_property(PropertieKey::SelectedCheckpoint,PropertieValue::String(new_checkpoint));
+                    }
+                }
+                ControllerRequest::LoadCheckpoint => {
+                    let mut load_checkpoint = "".to_string();
+
+                    view_model.get_property(&PropertieKey::SelectedCheckpoint, |val| {
+                        if let PropertieValue::String(ref selected_checkpoint) = val {
+                            load_checkpoint.push_str(selected_checkpoint);
+                        }
+                    });
+
+                    if let Some(checkpoint) = self.checkpoints.get(&load_checkpoint){
+                        if let Ok(new_app_data) = serde_json::from_str(&checkpoint) {
+                            self.app_data = new_app_data;
+                        }
+                    }
+
+                    self.restore(view_model);
+                }
+                ControllerRequest::DeleteCheckpoint => {
+
+                    let mut delete_checkpoint = "".to_string();
+
+                    view_model.get_property(&PropertieKey::SelectedCheckpoint, |val| {
+                        if let PropertieValue::String(ref selected_checkpoint) = val {
+                            delete_checkpoint.push_str(selected_checkpoint);
+                        }
+                    });
+
+                    self.checkpoints.remove(&delete_checkpoint);
+                    let mut new_checkpoint = "".to_string();
+
+                    view_model.update_property(&PropertieKey::Checkpoints, |val| {
+                        if let PropertieValue::VecString(ref mut checkpoints) = val {
+                            checkpoints.retain(|x| x != &delete_checkpoint);
+                            if checkpoints.len() > 0 {
+                                new_checkpoint.push_str(&checkpoints[0]);
+                            }
+                        }
+                    });
+
+                    view_model.insert_property(PropertieKey::SelectedCheckpoint,PropertieValue::String(new_checkpoint));
+                },
+                ControllerRequest::RefreshRequestConfig => {
+                    if let Ok(mut request_config) = self.app_data.request_config.read() {
+                        if let Ok(mut inner) = view_model.inner.lock() {
+                            if let Some(PropertieValue::String(ref mut endpoint)) =
+                                inner.properties.get_mut(&PropertieKey::CustomServerEndpoint)
+                            {
+                                *endpoint = request_config.endpoint.to_owned();
+                            }
+                            if let Some(PropertieValue::String(ref mut user_name)) =
+                                inner.properties.get_mut(&PropertieKey::CustomServerUsername)
+                            {
+                                *user_name = request_config.user_name.to_owned(); 
+                            }
+                            if let Some(PropertieValue::String(ref mut password)) =
+                                inner.properties.get_mut(&PropertieKey::CustomServerPassword)
+                            {
+                                *password = request_config.password.to_owned(); 
+                            }
+                        }
+                    }
+                },
                 ControllerRequest::UpdateRequestConfig => {
                     if let Ok(mut request_config) = self.app_data.request_config.write() {
                         if let Ok(mut inner) = view_model.inner.lock() {
@@ -85,7 +155,7 @@ impl ModelController {
                             }
                         }
                     }
-                }
+                },
                 ControllerRequest::TestCustomServerConnection(update) => {
                     if update {
                         self.app_data.test_custom_server_connection();
@@ -107,8 +177,50 @@ impl ModelController {
                             }
                         }
                     }
+                },
+                ControllerRequest::UpdateAIRequestConfig => {
+                    if let Ok(mut request_config) = self.app_data.ai_request_config.write() {
+                        if let Ok(mut inner) = view_model.inner.lock() {
+                            if let Some(PropertieValue::String(ref endpoint)) =
+                                inner.properties.get(&PropertieKey::AIServerEndpoint)
+                            {
+                                request_config.endpoint = endpoint.to_owned();
+                            }
+                            if let Some(PropertieValue::String(ref user_name)) =
+                                inner.properties.get(&PropertieKey::AIServerUsername)
+                            {
+                                request_config.user_name = user_name.to_owned();
+                            }
+                            if let Some(PropertieValue::String(ref password)) =
+                                inner.properties.get(&PropertieKey::AIServerPassword)
+                            {
+                                request_config.password = password.to_owned();
+                            }
+                        }
+                    }
+                },
+                ControllerRequest::TestAIServerConnection(update) => {
+                    if update {
+                        self.app_data.test_ai_server_connection();
+                        retained_controller_requests
+                            .insert(ControllerRequest::TestAIServerConnection(false));
+                    } else {
+                        if let Ok(mut inner) = view_model.inner.lock() {
+                            if let Some(PropertieValue::DownloadState(ref mut status)) = inner
+                                .properties
+                                .get_mut(&PropertieKey::AIServerConnectionStatus)
+                            {
+                                *status = self.app_data.ai_server_connection_status();
+
+                                if let DownloadState::InProgress = status {
+                                    retained_controller_requests.insert(
+                                        ControllerRequest::TestAIServerConnection(false),
+                                    );
+                                }
+                            }
+                        }
+                    }
                 }
-                ControllerRequest::TestAIServerConnection => {}
 
                 ControllerRequest::RefreshCard => {
                     if self.app_data.card_list.len() > 0 {
@@ -136,7 +248,7 @@ impl ModelController {
                             inner.properties.insert(
                                 PropertieKey::CardHasAudio,
                                 PropertieValue::Bool(current_card.display_data.has_audio()),
-                            );
+                            );                               
 
                             retained_controller_requests.insert(ControllerRequest::LoadImage);
                             retained_controller_requests.insert(ControllerRequest::LoadAudio);
@@ -413,42 +525,54 @@ impl ModelController {
                         }
                     });
                 }
-                ControllerRequest::PlayCardAudio => {
-                    if !self.app_data.card_list[0].display_data.play_audio() {
+                ControllerRequest::PlayCardAudio => { 
+                    if !self.app_data.play_audio_of_card(0) {
                         retained_controller_requests.insert(ControllerRequest::PlayCardAudio);
                     }
                 }
-                ControllerRequest::LoadImage => {
-                    if self.app_data.card_list.len() == 0 {
-                        return;
-                    }
+                ControllerRequest::LoadImage => { 
+                    if true { 
+                        if let Some(image) = self.app_data.get_dalle_image_for_card(0) { 
 
-                    let current_card = &mut self.app_data.card_list[0];
-
-                    if current_card.display_data.has_image() {
-                        if let Some(image) = current_card.display_data.get_image() {
                             if let Ok(mut inner) = view_model.inner.lock() {
                                 inner.volatile_properties.insert(
-                                    VolatilePropertieKey::CardImage,
-                                    VolatilePropertieValue::Image(image),
-                                );
-                            }
-                        } else {
+                                        VolatilePropertieKey::CardImage,
+                                        VolatilePropertieValue::Image(image),
+                                    );
+                                
+                            } 
+                        } else { 
                             retained_controller_requests.insert(ControllerRequest::LoadImage);
                         }
-                    } else {
-                        if let Ok(mut inner) = view_model.inner.lock() {
-                            inner
-                                .volatile_properties
-                                .remove(&VolatilePropertieKey::CardImage);
+                    }else{
+                        if self.app_data.card_has_image(0) {
+                            if let Some(image) = self.app_data.get_image_of_card(0) {
+                                if let Ok(mut inner) = view_model.inner.lock() {
+                                    inner.volatile_properties.insert(
+                                        VolatilePropertieKey::CardImage,
+                                        VolatilePropertieValue::Image(image),
+                                    );
+                                }
+                            } else {
+
+                                if let Ok(mut inner) = view_model.inner.lock() {
+                                    inner
+                                    .volatile_properties
+                                    .remove(&VolatilePropertieKey::CardImage);
+                                }
+                                retained_controller_requests.insert(ControllerRequest::LoadImage);
+                            }
+                        } else {
+                            if let Ok(mut inner) = view_model.inner.lock() {
+                                inner
+                                    .volatile_properties
+                                    .remove(&VolatilePropertieKey::CardImage);
+                            }
                         }
                     }
                 }
                 ControllerRequest::LoadAudio => {
-                    let current_card = &mut self.app_data.card_list[0];
-                    if current_card.display_data.has_audio() {
-                        current_card.display_data.load_audio();
-                    }
+                    self.app_data.load_audio_of_card(0);
                 }
             }
         }
@@ -465,6 +589,7 @@ impl Default for ModelController {
     fn default() -> Self {
         Self {
             app_data: AppData::default(),
+            checkpoints: HashMap::new(),
         }
     }
 }

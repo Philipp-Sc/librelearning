@@ -32,26 +32,31 @@ impl AppDisplay {
         ui.allocate_space(egui::Vec2 { x: 0.0, y: 20.0 });
 
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-            let mut play_audio_symbol = "🔇";
+            
 
+            let mut has_audio = false;
             if let Some(PropertieValue::Bool(ref card_has_audio)) =
                 inner.properties.get(&PropertieKey::CardHasAudio)
             {
-                if *card_has_audio {
-                    play_audio_symbol = "🔊"
-                }
+                has_audio = *card_has_audio;
+                
             };
 
-            if ui
-                .add(
-                    egui::Button::new(egui::RichText::new(play_audio_symbol).size(20.0))
-                        .frame(false),
-                )
-                .clicked()
-            {
-                inner
-                    .controller_requests
-                    .insert(ControllerRequest::PlayCardAudio);
+            if has_audio {
+                let mut play_audio_symbol = "🔇"; // <- stop audio from playing, needs to be implemented.
+                play_audio_symbol = "🔊";
+
+                if ui
+                    .add(
+                        egui::Button::new(egui::RichText::new(play_audio_symbol).size(20.0))
+                            .frame(false),
+                    )
+                    .clicked()
+                {
+                    inner
+                        .controller_requests
+                        .insert(ControllerRequest::PlayCardAudio);
+                }
             }
 
             if let Some(PropertieValue::String(ref card_context)) =
@@ -75,7 +80,10 @@ impl AppDisplay {
                 .get(&VolatilePropertieKey::CardImage)
             {
                 if let Ok(retained_image) = image.lock() {
-                    retained_image.show_size(ui, egui::Vec2 { x: 200.0, y: 200.0 });
+                    ui.add(
+                        egui::Image::new(retained_image.texture_id(ui.ctx()), retained_image.size_vec2()) 
+                    );
+                    //retained_image.show_size(ui, egui::Vec2 { x: 200.0, y: 200.0 });
                     ui.allocate_space(egui::Vec2 { x: 0.0, y: 10.0 });
                     return;
                 }

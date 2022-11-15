@@ -12,7 +12,7 @@ use std::sync::Mutex;
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct ImageItem {
-    download_item: DownloadItem,
+    pub download_item: DownloadItem,
 
     #[serde(skip)]
     #[derivative(Debug = "ignore")]

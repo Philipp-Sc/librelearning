@@ -37,10 +37,7 @@ impl CardItem {
             Ok(vec) => {
                 match std::str::from_utf8(&vec[..]) {
                     Ok(v) => {
-                        let mut card = Card::parse(v);
-                        if let Some(ref mut c) = card {
-                            c.display_data.set_request_config(request_config);
-                        }
+                        let mut card = Card::parse(v); 
                         Ok(card)
                     }
                     Err(_e) => Ok(None), //  panic!("Invalid UTF-8 sequence: {}", e),

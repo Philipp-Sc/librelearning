@@ -1,9 +1,13 @@
 use crate::app_controller::model_controller::data_model::static_fonts::setup_custom_fonts;
 use crate::app_controller::AppController;
-
-// LOAD/SAVE/DELETE State. Enables Switching Decks, without losing everything.
+ 
 
 // USE DALLE API! yay. // Ckeckbox Augment with DALL-E // -> SERVER API.  // Server (saves all image generations and prompts, so they might be reused.) // if enabled DalleImageItem::new(prompt).
+// ADD DALLE API
+
+
+// REST Request -> DALLE "" -> Generates Image -> Saves Image -> Returns link.
+// Postgres Docker container.
 
 // format IL chinese card deck to right format. // use DALLE to generate PICTURES
 
